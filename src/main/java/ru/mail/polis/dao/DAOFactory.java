@@ -17,6 +17,7 @@
 package ru.mail.polis.dao;
 
 import org.jetbrains.annotations.NotNull;
+import ru.mail.polis.dao.storage.LSMDao;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,6 +29,8 @@ import java.io.IOException;
  */
 public final class DAOFactory {
     static final long MAX_HEAP = 128 * 1024 * 1024;
+    private static final long FLUSH_LIMIT = MAX_HEAP / 60;
+    private static final int COMPACT_LIMIT = 16;
 
     private DAOFactory() {
         // Not instantiatable
@@ -53,6 +56,6 @@ public final class DAOFactory {
             throw new IllegalArgumentException("Path is not a directory: " + data);
         }
 
-        throw new IllegalStateException("Not implemented yet");
+        return new LSMDao(data, COMPACT_LIMIT, FLUSH_LIMIT);
     }
 }
