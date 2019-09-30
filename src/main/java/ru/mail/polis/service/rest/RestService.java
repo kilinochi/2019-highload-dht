@@ -79,4 +79,9 @@ public final class RestService extends HttpServer implements Service {
         config.acceptors = new AcceptorConfig[]{acceptorConfig};
         return config;
     }
+
+    @Override
+    public void handleDefault(Request request, HttpSession session) throws IOException {
+        session.sendResponse(new Response(Response.BAD_REQUEST, Response.EMPTY));
+    }
 }
