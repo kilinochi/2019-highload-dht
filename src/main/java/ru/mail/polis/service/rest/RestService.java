@@ -1,12 +1,7 @@
 package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
-import one.nio.http.Param;
-import one.nio.http.Path;
-import one.nio.http.HttpServerConfig;
-import one.nio.http.HttpServer;
-import one.nio.http.Request;
-import one.nio.http.Response;
+import one.nio.http.*;
 import one.nio.server.AcceptorConfig;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -21,7 +16,8 @@ import java.util.NoSuchElementException;
 public final class RestService extends HttpServer implements Service {
 
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
-    private static final String API = "/v0/entity";
+    private static final String ENTITY_PATH = "/entity";
+    private static final String STATUS_PATH = "/status";
 
     private final DAO dao;
 
@@ -31,7 +27,12 @@ public final class RestService extends HttpServer implements Service {
         logger.info("Server is running on port " + port);
     }
 
-    @Path(API)
+    @Path("/v0"+STATUS_PATH)
+    public Response status() {
+        return new Response(Response.OK, Response.EMPTY);
+    }
+
+    @Path("/v0"+ENTITY_PATH)
     public Response entity (@Param("id") final String id, final Request request) {
 
         if(id == null || id.isEmpty()) {
