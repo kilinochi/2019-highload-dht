@@ -70,7 +70,7 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private static HttpServerConfig getConfig(final int port) {
-        if(port <= 1024 || port >= 65535) {
+        if(port <= 1024 || port >= 65536) {
             throw new IllegalArgumentException("Invalid port");
         }
         AcceptorConfig acceptorConfig = new AcceptorConfig();
