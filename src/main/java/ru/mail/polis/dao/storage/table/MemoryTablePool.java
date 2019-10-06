@@ -27,8 +27,8 @@ public final class MemoryTablePool implements Table, Closeable {
     private BlockingQueue <TableToFlush> flushingQueue;
     private long generation;
 
-    private final AtomicBoolean stop = new AtomicBoolean();
     private final long flushLimit;
+    private final AtomicBoolean stop = new AtomicBoolean();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public MemoryTablePool(final long flushLimit, final long startGeneration) {
