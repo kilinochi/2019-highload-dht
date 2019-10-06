@@ -41,23 +41,26 @@ public final class RestService extends HttpServer implements Service {
 
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
 
-        logger.info("Request " + request.getMethod() + " with param: " + id);
 
         try {
             switch (request.getMethod()) {
                 case Request.METHOD_GET:
+                    logger.info("Get method with param: " + id);
                     final ByteBuffer value = dao.get(key);
                     final ByteBuffer duplicate = value.duplicate();
                     byte [] body = new byte[duplicate.remaining()];
                     duplicate.get(body);
                     return new Response(Response.OK, body);
                 case Request.METHOD_PUT:
+                    logger.info("Put method with param: " + id);
                     dao.upsert(key, ByteBuffer.wrap(request.getBody()));
                     return new Response(Response.CREATED, Response.EMPTY);
                 case Request.METHOD_DELETE:
+                    logger.info("Delete method with param: " + id);
                     dao.remove(key);
                     return new Response(Response.ACCEPTED, Response.EMPTY);
                 default:
+                    logger.info("Ooops, this method is not allowed!");
                     return new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY);
             }
         }
