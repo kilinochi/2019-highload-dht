@@ -1,13 +1,17 @@
 package ru.mail.polis.dao.storage.table;
 
+import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.storage.Cluster;
 import ru.mail.polis.dao.storage.ClusterValue;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,11 +20,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class MemTable implements Table {
 
     private final long generation;
-    private final NavigableMap<ByteBuffer, ClusterValue> storage;
+    private final NavigableMap<ByteBuffer, ClusterValue> storage = new ConcurrentSkipListMap<>();
+    private final NavigableMap<ByteBuffer, ClusterValue> unmodifiable = Collections.unmodifiableNavigableMap(storage);
     private AtomicLong tableSizeInBytes = new AtomicLong();
 
-    public MemTable(final long generation) {
-        storage = new ConcurrentSkipListMap<>();
+    MemTable(final long generation) {
         this.generation = generation;
     }
 
@@ -33,11 +37,21 @@ public final class MemTable implements Table {
     @NotNull
     @Override
     public final Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
-        return Iterators.transform(storage.tailMap(from)
+        /*return Iterators.transform(storage.tailMap(from)
                         .entrySet().iterator(),
                 e -> {
                     assert e != null;
                     return new Cluster(e.getKey(), e.getValue(), generation);
+                });*/
+        return Iterators.transform(unmodifiable.tailMap(from)
+                        .entrySet()
+                        .iterator(),
+                new Function<Map.Entry<ByteBuffer, ClusterValue>, Cluster>() {
+                    @Nullable
+                    @Override
+                    public Cluster apply(Map.@Nullable Entry<ByteBuffer, ClusterValue> input) {
+                        return new Cluster(input.getKey(), input.getValue(), generation);
+                    }
                 });
     }
 

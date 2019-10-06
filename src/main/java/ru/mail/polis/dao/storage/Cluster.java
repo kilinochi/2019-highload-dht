@@ -33,7 +33,7 @@ public final class Cluster {
         return key;
     }
 
-    public long getGeneration() {
+    private long getGeneration() {
         return generation;
     }
 
