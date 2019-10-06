@@ -5,6 +5,8 @@ import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.Cluster;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Map;
 import java.util.Iterator;
 import java.util.Collection;
@@ -14,20 +16,22 @@ import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class MemoryTablePool implements Table {
+public final class MemoryTablePool implements Table, Closeable {
 
     private volatile MemTable currentTable;
     private NavigableMap<Long, Table> flushingTables;
     private BlockingQueue <TableToFlush> flushingQueue;
     private long generation;
 
+    private final AtomicBoolean stop = new AtomicBoolean();
     private final long flushLimit;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
-    public MemoryTablePool(long flushLimit, final long startGeneration) {
+    public MemoryTablePool(final long flushLimit, final long startGeneration) {
         this.flushLimit = flushLimit;
         this.generation = startGeneration;
         this.currentTable = new MemTable();
@@ -77,21 +81,27 @@ public class MemoryTablePool implements Table {
 
     @Override
     public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) {
+        if(stop.get()) {
+            throw new IllegalStateException("Already stopped!");
+        }
         currentTable.upsert(key, value);
         enqueueFlush();
     }
 
     @Override
     public void remove(@NotNull ByteBuffer key) {
+        if(stop.get()) {
+            throw new IllegalStateException("Already stopped!");
+        }
         currentTable.remove(key);
         enqueueFlush();
     }
 
-    TableToFlush tableToFlush() throws InterruptedException {
+    public TableToFlush tableToFlush() throws InterruptedException {
         return flushingQueue.take();
     }
 
-    void flushed() {
+    public void flushed(final long generation) {
         lock.writeLock().lock();
         try {
             flushingTables.remove(generation);
@@ -104,20 +114,43 @@ public class MemoryTablePool implements Table {
     private void enqueueFlush () {
         if(currentTable.size() > flushLimit) {
             lock.writeLock().lock();
+            TableToFlush tableToFlush = null;
             try {
                 if (currentTable.size() > flushLimit) {
-                    TableToFlush tableToFlush = new TableToFlush(generation, currentTable);
-                    try {
-                        flushingQueue.put(tableToFlush);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                    tableToFlush = new TableToFlush(generation, currentTable);
                     generation = generation + 1;
                     currentTable = new MemTable();
                 }
             } finally {
                 lock.writeLock().unlock();
             }
+            if(tableToFlush != null) {
+                try {
+                    flushingQueue.put(tableToFlush);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        if(!stop.compareAndSet(false, true)) {
+            return;
+        }
+        lock.writeLock().lock();
+        TableToFlush tableToFlush;
+        try {
+            tableToFlush = new TableToFlush(generation, currentTable, true);
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        try {
+            flushingQueue.put(tableToFlush);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }
