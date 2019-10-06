@@ -5,19 +5,22 @@ import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.storage.Cluster;
 import ru.mail.polis.dao.storage.ClusterValue;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.NavigableMap;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicLong;
 
-public final class MemTable {
+@ThreadSafe
+public final class MemTable implements Table {
 
     private final long generation;
     private final NavigableMap<ByteBuffer, ClusterValue> storage;
-    private long tableSize;
+    private AtomicLong tableSizeInBytes = new AtomicLong();
 
     public MemTable(final long generation) {
-        storage = new TreeMap<>();
+        storage = new ConcurrentSkipListMap<>();
         this.generation = generation;
     }
 
@@ -25,7 +28,10 @@ public final class MemTable {
      * Get data as Iterator from in-memory storage by key.
      *
      * @param from is the label which we can find data
-     **/
+     *
+     * */
+    @NotNull
+    @Override
     public final Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
         return Iterators.transform(storage.tailMap(from)
                         .entrySet().iterator(),
@@ -41,14 +47,15 @@ public final class MemTable {
      * @param key   is the label which we can find data
      * @param value is the data
      **/
+    @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
         final ClusterValue prev = storage.put(key, ClusterValue.of(value));
         if (prev == null) {
-            tableSize = tableSize + key.remaining() + value.remaining();
+            tableSizeInBytes.addAndGet(key.remaining() + value.remaining());
         } else if (prev.isTombstone()) {
-            tableSize = tableSize + value.remaining();
+            tableSizeInBytes.addAndGet(value.remaining());
         } else {
-            tableSize = tableSize + value.remaining() - prev.getData().remaining();
+            tableSizeInBytes.addAndGet(value.remaining() - prev.getData().remaining());
         }
     }
 
@@ -58,16 +65,18 @@ public final class MemTable {
      * @param key is the label which we can find data
      *            and delete data from storage
      */
+    @Override
     public void remove(@NotNull final ByteBuffer key) {
         final ClusterValue prev = storage.put(key, ClusterValue.deadCluster());
         if (prev == null) {
-            tableSize = tableSize + key.remaining();
+            tableSizeInBytes.addAndGet(key.remaining());
         } else if (!prev.isTombstone()) {
-            tableSize = tableSize - prev.getData().remaining();
+            tableSizeInBytes.addAndGet(-prev.getData().remaining());
         }
     }
 
+    @Override
     public long size() {
-        return tableSize;
+        return tableSizeInBytes.get();
     }
 }

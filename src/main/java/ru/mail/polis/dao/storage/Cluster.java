@@ -7,7 +7,7 @@ import java.util.Comparator;
 
 public final class Cluster {
 
-    static final Comparator<Cluster> COMPARATOR = Comparator
+    public static final Comparator<Cluster> COMPARATOR = Comparator
             .comparing(Cluster::getKey)
             .thenComparing(Cluster::getClusterValue)
             .thenComparing(Cluster::getGeneration, Comparator.reverseOrder());

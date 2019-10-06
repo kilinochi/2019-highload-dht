@@ -5,7 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.Iters;
-import ru.mail.polis.dao.storage.table.MemTable;
+import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
 
 import java.io.File;
@@ -31,9 +31,8 @@ public final class LSMDao implements DAO {
     private final File directory;
     private final long compactLimit;
     private final long flushLimit;
-    private MemTable memTable;
+    private MemoryTablePool memoryTablePool;
     private List<SSTable> ssTables;
-    private long generation;
 
 
     /**
@@ -63,7 +62,7 @@ public final class LSMDao implements DAO {
             }
         });
         generation++;
-        memTable = new MemTable(generation);
+        memTable = new MemoryTablePool(generation);
     }
 
     @NotNull
@@ -148,6 +147,6 @@ public final class LSMDao implements DAO {
         final File dest = new File(directory, FILE_NAME + generation + SUFFIX_DAT);
         Files.move(tmp.toPath(), dest.toPath(), StandardCopyOption.ATOMIC_MOVE);
         generation++;
-        memTable = new MemTable(generation);
+        memTable = new MemoryTablePool(generation);
     }
 }
