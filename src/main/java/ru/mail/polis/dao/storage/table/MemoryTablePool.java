@@ -13,7 +13,6 @@ import java.util.Collection;
 import java.util.ArrayList;
 import java.nio.ByteBuffer;
 import java.util.NavigableMap;
-import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -119,6 +118,7 @@ public final class MemoryTablePool implements Table, Closeable {
             try {
                 if (currentMemoryTable.size() > flushLimit) {
                     tableToFlush = new TableToFlush(generation, currentMemoryTable);
+                    pendingToFlushTables.put(generation, currentMemoryTable);
                     generation = generation + 1;
                     currentMemoryTable = new MemTable();
                 }
