@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public final class SSTable {
+public final class SSTable implements Table {
 
     private final int rows;
     private final LongBuffer offsets;
@@ -113,14 +113,20 @@ public final class SSTable {
         this.table = file;
     }
 
+    @Override
+    public long size() {
+        return 0;
+    }
+
     /**
      * Iterator of data from file.
      *
      * @param from is the key, which help to find necessary
      *             clusters of data
      **/
+    @Override
     public Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
-        return new Iterator<Cluster>() {
+        return new Iterator<>() {
 
             int next = position(from);
 
@@ -135,6 +141,16 @@ public final class SSTable {
                 return clusterAt(next++);
             }
         };
+    }
+
+    @Override
+    public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) {
+        throw new UnsupportedOperationException("Not upsert!");
+    }
+
+    @Override
+    public void remove(@NotNull ByteBuffer key) {
+        throw new UnsupportedOperationException("Not remove!");
     }
 
     public File getTable() {

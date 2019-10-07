@@ -25,7 +25,7 @@ public final class LSMDao implements DAO {
     private static final String SUFFIX_DAT = ".dat";
     private static final String SUFFIX_TMP = ".tmp";
     private static final String FILE_NAME = "SSTable_";
-    private static final Pattern WATCH_FILE_NAME = Pattern.compile(FILE_NAME);
+    private static final Pattern FILE_NAME_PATTERN = Pattern.compile(FILE_NAME);
     private static final ByteBuffer SMALLEST_KEY = ByteBuffer.allocate(0);
 
     private final File directory;
@@ -53,7 +53,7 @@ public final class LSMDao implements DAO {
         long maxGeneration = 0;
         final Collection <File> files
                 = Files.find(directory.toPath(), 1, ((path, basicFileAttributes) -> basicFileAttributes.isRegularFile()
-                        && WATCH_FILE_NAME.matcher(path.getFileName().toString()).find()
+                        && FILE_NAME_PATTERN.matcher(path.getFileName().toString()).find()
                         && path.getFileName().toString().endsWith(SUFFIX_DAT)))
                 .map(Path::toFile)
                 .collect(Collectors.toList());
@@ -118,7 +118,7 @@ public final class LSMDao implements DAO {
 
     @Override
     public void compact() throws IOException {
-        /*final Iterator<Cluster> data = clusterIterator(SMALLEST_KEY);
+       /* final Iterator<Cluster> data = clusterIterator(SMALLEST_KEY);
         flush(data);
         ssTables.forEach(ssTable -> {
             try {
@@ -128,9 +128,7 @@ public final class LSMDao implements DAO {
             }
         });
         ssTables = new ArrayList<>();
-        ssTables.add(new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));
-    */
-
+        ssTables.add(new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));*/
     }
 
     private void flush(final long generation, final Table table) throws IOException {

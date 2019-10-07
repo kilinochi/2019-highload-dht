@@ -5,14 +5,14 @@ public final class TableToFlush {
     private final Table table;
     private final boolean poisonPills;
 
-    public TableToFlush(long generation, Table table,
-                        final boolean poisonPills) {
+    TableToFlush(long generation, Table table,
+                 final boolean poisonPills) {
         this.generation = generation;
         this.table = table;
         this.poisonPills = poisonPills;
     }
 
-    public TableToFlush(long generation, Table table) {
+    TableToFlush(long generation, Table table) {
         this(generation, table, false);
     }
 

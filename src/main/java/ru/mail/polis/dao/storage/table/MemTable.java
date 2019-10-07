@@ -30,20 +30,15 @@ public final class MemTable implements Table {
      * @param from is the label which we can find data
      *
      * */
+
     @NotNull
     @Override
     public final Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
-        /*return Iterators.transform(storage.tailMap(from)
-                        .entrySet().iterator(),
-                e -> {
-                    assert e != null;
-                    return new Cluster(e.getKey(), e.getValue(), generation);
-                });*/
         return Iterators.transform(unmodifiable.tailMap(from)
                         .entrySet()
                         .iterator(),
                 new Function<Map.Entry<ByteBuffer, ClusterValue>, Cluster>() {
-                    @Nullable
+                    @NotNull
                     @Override
                     public Cluster apply(Map.@Nullable Entry<ByteBuffer, ClusterValue> input) {
                         return Cluster.of(input.getKey(), input.getValue());
@@ -56,7 +51,8 @@ public final class MemTable implements Table {
      *
      * @param key   is the label which we can find data
      * @param value is the data
-     **/
+     *
+     * */
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
         final ClusterValue prev = storage.put(key, ClusterValue.of(value));

@@ -16,14 +16,15 @@ import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public final class MemoryTablePool implements Table, Closeable {
 
-    private volatile MemTable currentTable;
-    private NavigableMap<Long, Table> flushingTables;
+    private volatile MemTable currentMemoryTable;
+    private NavigableMap<Long, Table> pendingToFlushTables;
     private BlockingQueue <TableToFlush> flushingQueue;
     private long generation;
 
@@ -34,8 +35,8 @@ public final class MemoryTablePool implements Table, Closeable {
     public MemoryTablePool(final long flushLimit, final long startGeneration) {
         this.flushLimit = flushLimit;
         this.generation = startGeneration;
-        this.currentTable = new MemTable();
-        this.flushingTables = new TreeMap<>();
+        this.currentMemoryTable = new MemTable();
+        this.pendingToFlushTables = new ConcurrentSkipListMap<>();
         this.flushingQueue = new ArrayBlockingQueue<>(2);
     }
 
@@ -44,8 +45,8 @@ public final class MemoryTablePool implements Table, Closeable {
     public long size() {
         lock.readLock().lock();
         try {
-            long size = currentTable.size();
-            for (Map.Entry<Long, Table> table: flushingTables.entrySet()) {
+            long size = currentMemoryTable.size();
+            for (Map.Entry<Long, Table> table: pendingToFlushTables.entrySet()) {
                 size = table.getValue().size();
             }
             return size;
@@ -61,9 +62,9 @@ public final class MemoryTablePool implements Table, Closeable {
         lock.readLock().lock();
         final Collection<Iterator<Cluster>> iterators;
         try {
-            iterators = new ArrayList<>(flushingTables.size() + 1);
-            iterators.add(currentTable.iterator(from));
-            for (final Table table : flushingTables.descendingMap().values()) {
+            iterators = new ArrayList<>(pendingToFlushTables.size() + 1);
+            iterators.add(currentMemoryTable.iterator(from));
+            for (final Table table : pendingToFlushTables.descendingMap().values()) {
                 iterators.add(table.iterator(from));
             }
         } finally {
@@ -84,7 +85,7 @@ public final class MemoryTablePool implements Table, Closeable {
         if(stop.get()) {
             throw new IllegalStateException("Already stopped!");
         }
-        currentTable.upsert(key, value);
+        currentMemoryTable.upsert(key, value);
         enqueueFlush();
     }
 
@@ -93,7 +94,7 @@ public final class MemoryTablePool implements Table, Closeable {
         if(stop.get()) {
             throw new IllegalStateException("Already stopped!");
         }
-        currentTable.remove(key);
+        currentMemoryTable.remove(key);
         enqueueFlush();
     }
 
@@ -104,7 +105,7 @@ public final class MemoryTablePool implements Table, Closeable {
     public void flushed(final long generation) {
         lock.writeLock().lock();
         try {
-            flushingTables.remove(generation);
+            pendingToFlushTables.remove(generation);
         }
         finally {
             lock.writeLock().unlock();
@@ -112,14 +113,14 @@ public final class MemoryTablePool implements Table, Closeable {
     }
 
     private void enqueueFlush () {
-        if(currentTable.size() > flushLimit) {
+        if(currentMemoryTable.size() > flushLimit) {
             lock.writeLock().lock();
             TableToFlush tableToFlush = null;
             try {
-                if (currentTable.size() > flushLimit) {
-                    tableToFlush = new TableToFlush(generation, currentTable);
+                if (currentMemoryTable.size() > flushLimit) {
+                    tableToFlush = new TableToFlush(generation, currentMemoryTable);
                     generation = generation + 1;
-                    currentTable = new MemTable();
+                    currentMemoryTable = new MemTable();
                 }
             } finally {
                 lock.writeLock().unlock();
@@ -142,7 +143,7 @@ public final class MemoryTablePool implements Table, Closeable {
         lock.writeLock().lock();
         TableToFlush tableToFlush;
         try {
-            tableToFlush = new TableToFlush(generation, currentTable, true);
+            tableToFlush = new TableToFlush(generation, currentMemoryTable, true);
         } finally {
             lock.writeLock().unlock();
         }
