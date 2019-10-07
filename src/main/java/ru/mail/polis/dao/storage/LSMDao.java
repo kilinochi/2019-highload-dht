@@ -10,6 +10,7 @@ import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.table.Table;
 import ru.mail.polis.dao.storage.table.TableToFlush;
+import ru.mail.polis.dao.storage.utils.GenerationUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -58,7 +59,7 @@ public final class LSMDao implements DAO {
                 .collect(Collectors.toList());
         for(final File curFile: files) {
             final Path path = curFile.toPath();
-            final long currGeneration = Generation.fromPath(path);
+            final long currGeneration = GenerationUtils.fromPath(path);
             maxGeneration = Math.max(currGeneration, maxGeneration);
         }
         maxGeneration = maxGeneration + 1;

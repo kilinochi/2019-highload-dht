@@ -1,9 +1,9 @@
-package ru.mail.polis.dao.storage;
+package ru.mail.polis.dao.storage.utils;
 
 import java.nio.ByteBuffer;
 
-public final class BytesWrapper {
-    private BytesWrapper() {
+public final class BytesUtils {
+    private BytesUtils() {
     }
 
     public static ByteBuffer fromInt(final int value) {

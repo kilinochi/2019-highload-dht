@@ -1,7 +1,7 @@
 package ru.mail.polis.dao.storage.table;
 
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.dao.storage.BytesWrapper;
+import ru.mail.polis.dao.storage.utils.BytesUtils;
 import ru.mail.polis.dao.storage.cluster.Cluster;
 import ru.mail.polis.dao.storage.cluster.ClusterValue;
 
@@ -44,7 +44,7 @@ public final class SSTable {
                 // Write Key
                 final ByteBuffer key = cluster.getKey();
                 final int keySize = cluster.getKey().remaining();
-                fileChannel.write(BytesWrapper.fromInt(keySize));
+                fileChannel.write(BytesUtils.fromInt(keySize));
                 offset += Integer.BYTES; // 4 byte
                 final ByteBuffer keyDuplicate = key.duplicate();
                 fileChannel.write(keyDuplicate);
@@ -55,9 +55,9 @@ public final class SSTable {
 
                 // Write Timestamp
                 if (value.isTombstone()) {
-                    fileChannel.write(BytesWrapper.fromLong(-cluster.getClusterValue().getTimestamp()));
+                    fileChannel.write(BytesUtils.fromLong(-cluster.getClusterValue().getTimestamp()));
                 } else {
-                    fileChannel.write(BytesWrapper.fromLong(cluster.getClusterValue().getTimestamp()));
+                    fileChannel.write(BytesUtils.fromLong(cluster.getClusterValue().getTimestamp()));
                 }
                 offset += Long.BYTES; // 8 byte
 
@@ -66,7 +66,7 @@ public final class SSTable {
                 if (!value.isTombstone()) {
                     final ByteBuffer valueData = value.getData();
                     final int valueSize = value.getData().remaining();
-                    fileChannel.write(BytesWrapper.fromInt(valueSize));
+                    fileChannel.write(BytesUtils.fromInt(valueSize));
                     offset += Integer.BYTES; // 4 byte
                     fileChannel.write(valueData);
                     offset += valueSize;
@@ -75,10 +75,10 @@ public final class SSTable {
             }
             // Write Offsets
             for (final Long anOffset : offsets) {
-                fileChannel.write(BytesWrapper.fromLong(anOffset));
+                fileChannel.write(BytesUtils.fromLong(anOffset));
             }
             //Cells
-            fileChannel.write(BytesWrapper.fromLong(offsets.size()));
+            fileChannel.write(BytesUtils.fromLong(offsets.size()));
         }
     }
 

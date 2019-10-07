@@ -1,6 +1,8 @@
 package ru.mail.polis.dao.storage.cluster;
 
 import org.jetbrains.annotations.NotNull;
+import ru.mail.polis.dao.storage.utils.TimeUtils;
+
 import java.nio.ByteBuffer;
 
 public final class ClusterValue implements Comparable<ClusterValue> {
@@ -10,11 +12,11 @@ public final class ClusterValue implements Comparable<ClusterValue> {
     private final boolean tombstone;
 
     public static ClusterValue of(@NotNull final ByteBuffer data) {
-        return new ClusterValue(data, System.currentTimeMillis(), false);
+        return new ClusterValue(data.duplicate(), TimeUtils.getTimeNanos(), false);
     }
 
     public static ClusterValue deadCluster() {
-        return new ClusterValue(null, System.currentTimeMillis(), true);
+        return new ClusterValue(null, TimeUtils.getTimeNanos(), true);
     }
 
     public long getTimestamp() {

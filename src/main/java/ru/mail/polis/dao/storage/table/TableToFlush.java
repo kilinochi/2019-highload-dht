@@ -1,6 +1,6 @@
 package ru.mail.polis.dao.storage.table;
 
-public class TableToFlush {
+public final class TableToFlush {
     private final long generation;
     private final Table table;
     private final boolean poisonPills;
