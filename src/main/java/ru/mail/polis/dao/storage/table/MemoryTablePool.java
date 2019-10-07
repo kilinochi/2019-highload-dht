@@ -3,7 +3,7 @@ package ru.mail.polis.dao.storage.table;
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
-import ru.mail.polis.dao.storage.Cluster;
+import ru.mail.polis.dao.storage.cluster.Cluster;
 
 import java.io.Closeable;
 import java.io.IOException;

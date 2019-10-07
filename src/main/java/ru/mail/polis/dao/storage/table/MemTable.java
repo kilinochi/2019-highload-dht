@@ -4,8 +4,8 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.dao.storage.Cluster;
-import ru.mail.polis.dao.storage.ClusterValue;
+import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.cluster.ClusterValue;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.nio.ByteBuffer;
@@ -19,14 +19,10 @@ import java.util.concurrent.atomic.AtomicLong;
 @ThreadSafe
 public final class MemTable implements Table {
 
-    private final long generation;
     private final NavigableMap<ByteBuffer, ClusterValue> storage = new ConcurrentSkipListMap<>();
     private final NavigableMap<ByteBuffer, ClusterValue> unmodifiable = Collections.unmodifiableNavigableMap(storage);
     private AtomicLong tableSizeInBytes = new AtomicLong();
 
-    MemTable(final long generation) {
-        this.generation = generation;
-    }
 
     /**
      * Get data as Iterator from in-memory storage by key.
@@ -50,7 +46,7 @@ public final class MemTable implements Table {
                     @Nullable
                     @Override
                     public Cluster apply(Map.@Nullable Entry<ByteBuffer, ClusterValue> input) {
-                        return new Cluster(input.getKey(), input.getValue(), generation);
+                        return Cluster.of(input.getKey(), input.getValue());
                     }
                 });
     }

@@ -1,11 +1,11 @@
 package ru.mail.polis.dao.storage;
 
 import com.google.common.collect.Iterators;
-import one.nio.http.Request;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.Iters;
+import ru.mail.polis.dao.storage.cluster.Cluster;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.table.Table;
@@ -15,10 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 

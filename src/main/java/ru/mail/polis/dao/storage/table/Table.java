@@ -1,7 +1,7 @@
 package ru.mail.polis.dao.storage.table;
 
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.dao.storage.Cluster;
+import ru.mail.polis.dao.storage.cluster.Cluster;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;

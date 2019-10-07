@@ -2,8 +2,8 @@ package ru.mail.polis.dao.storage.table;
 
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.storage.BytesWrapper;
-import ru.mail.polis.dao.storage.Cluster;
-import ru.mail.polis.dao.storage.ClusterValue;
+import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.cluster.ClusterValue;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,7 +21,6 @@ public final class SSTable {
     private final int rows;
     private final LongBuffer offsets;
     private final ByteBuffer clusters;
-    private final long generation;
     private final File table;
 
     /**
@@ -88,8 +87,7 @@ public final class SSTable {
      *
      * @param file is the file from which we read data
      **/
-    public SSTable(@NotNull final File file, final long generation) throws IOException {
-        this.generation = generation;
+    public SSTable(@NotNull final File file) throws IOException {
         final long fileSize = file.length();
         final ByteBuffer mapped;
         try (
@@ -189,7 +187,7 @@ public final class SSTable {
         offset += Long.BYTES;
 
         if (timeStamp < 0) {
-            return new Cluster(key.slice(), new ClusterValue(null, -timeStamp, true), generation);
+            return Cluster.of(key.slice(), new ClusterValue(null, -timeStamp, true));
         } else {
             final int valueSize = clusters.getInt((int) offset);
             offset += Integer.BYTES;
@@ -198,7 +196,7 @@ public final class SSTable {
             value.limit(value.position() + valueSize)
                     .position((int) offset)
                     .limit((int) (offset + valueSize));
-            return new Cluster(key.slice(), new ClusterValue(value.slice(), timeStamp, false), generation);
+            return Cluster.of(key.slice(), new ClusterValue(value.slice(), timeStamp, false));
         }
     }
 }

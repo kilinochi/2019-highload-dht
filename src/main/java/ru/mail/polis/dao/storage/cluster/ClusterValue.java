@@ -1,4 +1,4 @@
-package ru.mail.polis.dao.storage;
+package ru.mail.polis.dao.storage.cluster;
 
 import org.jetbrains.annotations.NotNull;
 import java.nio.ByteBuffer;
