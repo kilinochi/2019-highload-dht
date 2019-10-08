@@ -20,9 +20,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -121,23 +118,24 @@ public final class LSMDao implements DAO {
         try {
             flusherThread.join();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+           Thread.currentThread().interrupt();
         }
     }
 
     @Override
     public void compact() throws IOException {
-       /* final Iterator<Cluster> data = clusterIterator(SMALLEST_KEY);
+        /*final Iterator<Cluster> data = clusterIterator(SMALLEST_KEY);
         flush(data);
-        ssTables.forEach(ssTable -> {
+        ssTables.forEach(ssTables.descendingMap(). -> {
             try {
-                Files.delete(ssTable.getTable().toPath());
+                Files.delete(ssTable.toPath());
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
-        ssTables = new ArrayList<>();
-        ssTables.add(new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));*/
+        ssTables = new ConcurrentSkipListMap<>();
+        //ssTables.add(new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));
+        ssTables.put()*/
     }
 
     private void flush(final long generation, final Table table) throws IOException {

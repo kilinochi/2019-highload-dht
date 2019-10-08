@@ -46,7 +46,7 @@ public final class MemoryTablePool implements Table, Closeable {
         try {
             long size = currentMemoryTable.size();
             for (Map.Entry<Long, Table> table: pendingToFlushTables.entrySet()) {
-                size = table.getValue().size();
+                size = size + table.getValue().size();
             }
             return size;
         } finally {
@@ -118,7 +118,7 @@ public final class MemoryTablePool implements Table, Closeable {
             try {
                 if (currentMemoryTable.size() > flushLimit) {
                     tableToFlush = new TableToFlush(generation, currentMemoryTable);
-                    //pendingToFlushTables.put(generation, currentMemoryTable);
+                    pendingToFlushTables.put(generation, currentMemoryTable);
                     generation = generation + 1;
                     currentMemoryTable = new MemTable();
                 }
@@ -129,7 +129,7 @@ public final class MemoryTablePool implements Table, Closeable {
                 try {
                     flushingQueue.put(tableToFlush);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
                 }
             }
         }
