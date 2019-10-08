@@ -2,6 +2,8 @@ package ru.mail.polis.dao.storage;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.Iters;
@@ -17,10 +19,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public final class LSMDao implements DAO {
+
+    private static final Logger logger = LoggerFactory.getLogger(LSMDao.class);
 
     private static final String SUFFIX_DAT = ".dat";
     private static final String SUFFIX_TMP = ".tmp";
@@ -33,7 +38,7 @@ public final class LSMDao implements DAO {
     private final Thread flusherThread;
     private final MemoryTablePool memoryTablePool;
 
-    private List<SSTable> ssTables;
+    private NavigableMap<Long, SSTable> ssTables;
 
 
     /**
@@ -47,9 +52,10 @@ public final class LSMDao implements DAO {
     public LSMDao(@NotNull final File directory,
                   final long compactLimit,
                   final long flushLimit) throws IOException {
+        logger.info("Create dao :" + this.toString());
         this.compactLimit = compactLimit;
         this.directory = directory;
-        ssTables = new ArrayList<>();
+        ssTables = new ConcurrentSkipListMap<>();
         long maxGeneration = 0;
         final Collection <File> files
                 = Files.find(directory.toPath(), 1, ((path, basicFileAttributes) -> basicFileAttributes.isRegularFile()
@@ -60,6 +66,7 @@ public final class LSMDao implements DAO {
         for(final File curFile: files) {
             final Path path = curFile.toPath();
             final long currGeneration = GenerationUtils.fromPath(path);
+            ssTables.put(currGeneration, new SSTable(path.toFile()));
             maxGeneration = Math.max(currGeneration, maxGeneration);
         }
         maxGeneration = maxGeneration + 1;
@@ -71,6 +78,7 @@ public final class LSMDao implements DAO {
     @NotNull
     @Override
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
+        logger.info("Get iterators from DAO : " + this.toString());
         return Iterators.transform(clusterIterator(from), cluster -> {
             assert cluster != null;
             return Record.of(cluster.getKey(), cluster.getClusterValue().getData());
@@ -79,7 +87,7 @@ public final class LSMDao implements DAO {
 
     private Iterator<Cluster> clusterIterator(@NotNull final ByteBuffer from) {
         final List<Iterator<Cluster>> iters = new ArrayList<>();
-        for (final SSTable ssTable : this.ssTables) {
+        for (final SSTable ssTable : this.ssTables.descendingMap().values()) {
             iters.add(ssTable.iterator(from));
         }
 
@@ -156,7 +164,7 @@ public final class LSMDao implements DAO {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IOException e) {
-                    //error
+                    logger.info("IO Error" + e.getMessage());
                 }
             }
         }
