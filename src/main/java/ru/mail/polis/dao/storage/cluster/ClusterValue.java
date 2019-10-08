@@ -24,7 +24,7 @@ public final class ClusterValue implements Comparable<ClusterValue> {
     }
 
     public ByteBuffer getData() {
-        return data.asReadOnlyBuffer();
+        return data;
     }
 
     public ClusterValue(final ByteBuffer data, final long timestamp, final boolean isDead) {

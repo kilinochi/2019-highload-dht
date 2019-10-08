@@ -4,8 +4,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mail.polis.dao.storage.cluster.Cluster;
 import ru.mail.polis.dao.storage.cluster.ClusterValue;
 
@@ -20,8 +18,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @ThreadSafe
 public final class MemTable implements Table {
-
-    private static final Logger logger = LoggerFactory.getLogger(MemTable.class);
 
     private final NavigableMap<ByteBuffer, ClusterValue> storage = new ConcurrentSkipListMap<>();
     private final NavigableMap<ByteBuffer, ClusterValue> unmodifiable = Collections.unmodifiableNavigableMap(storage);
@@ -39,9 +35,7 @@ public final class MemTable implements Table {
     @Override
     public final Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
 
-        logger.info("Key for iterator of memory table is :" + from.toString());
-
-        Iterator <Cluster> value =  Iterators.transform(unmodifiable.tailMap(from)
+        final Iterator <Cluster> value =  Iterators.transform(unmodifiable.tailMap(from)
                         .entrySet()
                         .iterator(),
                 new Function<Map.Entry<ByteBuffer, ClusterValue>, Cluster>() {
@@ -52,7 +46,6 @@ public final class MemTable implements Table {
                     }
                 });
 
-        logger.info("Value with key is : " + value.toString());
         return value;
     }
 
@@ -66,8 +59,6 @@ public final class MemTable implements Table {
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
         final ClusterValue prev = storage.put(key, ClusterValue.of(value));
-
-        logger.info("Upsert in-memory table with key : " + key.toString());
 
         if (prev == null) {
             tableSizeInBytes.addAndGet(key.remaining() + value.remaining());

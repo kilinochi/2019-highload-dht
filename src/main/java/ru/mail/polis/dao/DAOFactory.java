@@ -29,8 +29,8 @@ import ru.mail.polis.dao.storage.LSMDao;
  */
 public final class DAOFactory {
     static final long MAX_HEAP = 256 * 1024 * 1024;
-    static final long FLUSH_LIMIT = MAX_HEAP / 60;
-    static final long COMPACTION_LIMIT = 16;
+    private static final long FLUSH_LIMIT = MAX_HEAP / 60;
+    private static final long COMPACTION_LIMIT = 16;
 
     private DAOFactory() {
         // Not instantiatable

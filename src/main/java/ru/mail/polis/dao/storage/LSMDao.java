@@ -141,12 +141,19 @@ public final class LSMDao implements DAO {
 
     private void flush(final long generation, final Table table) throws IOException {
         Iterator <Cluster> data = table.iterator(SMALLEST_KEY);
+        long startFlushTime = System.currentTimeMillis();
+        logger.info("Flush start in: " + startFlushTime + " with generation: " + generation);
+
         if(data.hasNext()) {
             final File tmp = new File(directory, FILE_NAME + generation + SUFFIX_TMP);
             SSTable.writeToFile(data, tmp);
-            final File dest = new File(directory, FILE_NAME + generation + SUFFIX_DAT);
-            Files.move(tmp.toPath(), dest.toPath(), StandardCopyOption.ATOMIC_MOVE);
+            final File database = new File(directory, FILE_NAME + generation + SUFFIX_DAT);
+            Files.move(tmp.toPath(), database.toPath(), StandardCopyOption.ATOMIC_MOVE);
+            ssTables.put(generation, new SSTable(database));
         }
+        long endFlushTime = System.currentTimeMillis();
+        logger.info("Flush end in: " + endFlushTime + " with generation: " + generation);
+        logger.info("Estimated time: " + (endFlushTime - startFlushTime));
     }
 
     private class FlusherTask implements Runnable {
