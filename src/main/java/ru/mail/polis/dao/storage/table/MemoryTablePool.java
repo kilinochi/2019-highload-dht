@@ -118,7 +118,7 @@ public final class MemoryTablePool implements Table, Closeable {
             try {
                 if (currentMemoryTable.size() > flushLimit) {
                     tableToFlush = new TableToFlush(generation, currentMemoryTable);
-                    pendingToFlushTables.put(generation, currentMemoryTable);
+                    //pendingToFlushTables.put(generation, currentMemoryTable);
                     generation = generation + 1;
                     currentMemoryTable = new MemTable();
                 }

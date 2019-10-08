@@ -20,6 +20,9 @@ import java.nio.ByteBuffer;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -57,8 +60,7 @@ public final class LSMDao implements DAO {
         this.directory = directory;
         ssTables = new ConcurrentSkipListMap<>();
         long maxGeneration = 0;
-        final Collection <File> files
-                = Files.find(directory.toPath(), 1, ((path, basicFileAttributes) -> basicFileAttributes.isRegularFile()
+        final Collection <File> files = Files.find(directory.toPath(), 1, ((path, basicFileAttributes) -> basicFileAttributes.isRegularFile()
                         && FILE_NAME_PATTERN.matcher(path.getFileName().toString()).find()
                         && path.getFileName().toString().endsWith(SUFFIX_DAT)))
                 .map(Path::toFile)
@@ -78,7 +80,6 @@ public final class LSMDao implements DAO {
     @NotNull
     @Override
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
-        logger.info("Get iterators from DAO : " + this.toString());
         return Iterators.transform(clusterIterator(from), cluster -> {
             assert cluster != null;
             return Record.of(cluster.getKey(), cluster.getClusterValue().getData());
@@ -151,9 +152,8 @@ public final class LSMDao implements DAO {
             Files.move(tmp.toPath(), database.toPath(), StandardCopyOption.ATOMIC_MOVE);
             ssTables.put(generation, new SSTable(database));
         }
-        long endFlushTime = System.currentTimeMillis();
-        logger.info("Flush end in: " + endFlushTime + " with generation: " + generation);
-        logger.info("Estimated time: " + (endFlushTime - startFlushTime));
+        logger.info("Flush end in: " + System.currentTimeMillis() + " with generation: " + generation);
+        logger.info("Estimated time: " + (System.currentTimeMillis() - startFlushTime));
     }
 
     private class FlusherTask implements Runnable {
