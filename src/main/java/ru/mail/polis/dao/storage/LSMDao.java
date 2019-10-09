@@ -105,11 +105,17 @@ public final class LSMDao implements DAO {
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) throws IOException {
         memoryTablePool.upsert(key, value);
+        if(ssTables.values().size() > compactLimit) {
+            compact();
+        }
     }
 
     @Override
     public void remove(@NotNull final ByteBuffer key) throws IOException {
         memoryTablePool.remove(key);
+        if(ssTables.values().size() > compactLimit) {
+            compact();
+        }
     }
 
     @Override
@@ -124,8 +130,8 @@ public final class LSMDao implements DAO {
 
     @Override
     public void compact() throws IOException {
-        /*final Iterator<Cluster> data = clusterIterator(SMALLEST_KEY);
-        flush(data);
+        final Iterator<Cluster> data = clusterIterator(SMALLEST_KEY);
+        /*flush(data);
         ssTables.forEach(ssTables.descendingMap(). -> {
             try {
                 Files.delete(ssTable.toPath());
@@ -136,6 +142,11 @@ public final class LSMDao implements DAO {
         ssTables = new ConcurrentSkipListMap<>();
         //ssTables.add(new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));
         ssTables.put()*/
+        for(SSTable ssTable : ssTables.values()) {
+            Files.delete(ssTable.getTable().toPath());
+        }
+        ssTables = new ConcurrentSkipListMap<>();
+        ssTables.put(new SSTable())
     }
 
     private void flush(final long generation, final Table table) throws IOException {
@@ -154,7 +165,7 @@ public final class LSMDao implements DAO {
         logger.info("Estimated time: " + (System.currentTimeMillis() - startFlushTime));
     }
 
-    private class FlusherTask implements Runnable {
+    private final class FlusherTask implements Runnable {
 
         @Override
         public void run() {
@@ -162,6 +173,7 @@ public final class LSMDao implements DAO {
             while (!Thread.currentThread().isInterrupted() && !poisonReceived) {
                 TableToFlush tableToFlush;
                 try {
+                    logger.info("Prepare to flush in flusher task: " + this.toString());
                     tableToFlush = memoryTablePool.tableToFlush();
                     poisonReceived = tableToFlush.isPoisonPills();
                     flush(tableToFlush.getGeneration(), tableToFlush.getTable());

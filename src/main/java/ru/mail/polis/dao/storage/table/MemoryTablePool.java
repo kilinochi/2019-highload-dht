@@ -7,15 +7,15 @@ import ru.mail.polis.dao.storage.cluster.Cluster;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Map;
-import java.util.Iterator;
-import java.util.Collection;
-import java.util.ArrayList;
 import java.nio.ByteBuffer;
 import java.util.NavigableMap;
+import java.util.TreeMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Collection;
+import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -35,7 +35,7 @@ public final class MemoryTablePool implements Table, Closeable {
         this.flushLimit = flushLimit;
         this.generation = startGeneration;
         this.currentMemoryTable = new MemTable();
-        this.pendingToFlushTables = new ConcurrentSkipListMap<>();
+        this.pendingToFlushTables = new TreeMap<>();
         this.flushingQueue = new ArrayBlockingQueue<>(2);
     }
 
