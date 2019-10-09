@@ -13,7 +13,7 @@ public final class TableToFlush {
         this.poisonPills = poisonPills;
     }
 
-    TableToFlush(long generation, Table table) {
+    TableToFlush(final long generation, final Table table) {
         this(generation, table, false);
     }
 

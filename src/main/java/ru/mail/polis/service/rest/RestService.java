@@ -40,7 +40,7 @@ public final class RestService extends HttpServer implements Service {
     }
 
     /**
-     * Get request by this url
+     * Get request by this url.
      * */
     @Path("/v0"+STATUS_PATH)
     public Response status() {
@@ -48,7 +48,7 @@ public final class RestService extends HttpServer implements Service {
     }
 
     /**
-     * Get request by this url
+     * Get request by this url.
      * @param id is key by which
      * @param request is request method which client send to server
      * */
