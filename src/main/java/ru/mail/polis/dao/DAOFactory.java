@@ -30,7 +30,6 @@ import ru.mail.polis.dao.storage.LSMDao;
 public final class DAOFactory {
     static final long MAX_HEAP = 256 * 1024 * 1024;
     private static final long FLUSH_LIMIT = MAX_HEAP / 60;
-    private static final long COMPACTION_LIMIT = 16;
 
     private DAOFactory() {
         // Not instantiatable
@@ -56,6 +55,6 @@ public final class DAOFactory {
             throw new IllegalArgumentException("Path is not a directory: " + data);
         }
 
-        return new LSMDao(data, COMPACTION_LIMIT, FLUSH_LIMIT);
+        return new LSMDao(data, FLUSH_LIMIT);
     }
 }

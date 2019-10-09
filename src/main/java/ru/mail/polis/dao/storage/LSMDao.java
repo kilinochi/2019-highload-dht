@@ -24,9 +24,6 @@ import java.util.NavigableMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -34,6 +31,7 @@ public final class LSMDao implements DAO {
 
     private static final Logger logger = LoggerFactory.getLogger(LSMDao.class);
 
+    public static final int COMPACT_SIZE = 15;
     private static final String SUFFIX_DAT = ".dat";
     private static final String SUFFIX_TMP = ".tmp";
     private static final String FILE_NAME = "SSTable_";
@@ -41,10 +39,8 @@ public final class LSMDao implements DAO {
     private static final ByteBuffer SMALLEST_KEY = ByteBuffer.allocate(0);
 
     private final File directory;
-    private final long compactLimit;
     private final Thread flusherThread;
     private final MemoryTablePool memoryTablePool;
-    private final ScheduledExecutorService scheduledExecutorService;
 
     private NavigableMap<Long, SSTable> ssTables;
 
@@ -58,10 +54,8 @@ public final class LSMDao implements DAO {
      *
      * */
     public LSMDao(@NotNull final File directory,
-                  final long compactLimit,
                   final long flushLimit) throws IOException {
         logger.info("Create dao :" + this.toString());
-        this.compactLimit = compactLimit;
         this.directory = directory;
         ssTables = new ConcurrentSkipListMap<>();
         long maxGeneration = 0;
@@ -81,8 +75,6 @@ public final class LSMDao implements DAO {
         memoryTablePool = new MemoryTablePool(flushLimit, maxGeneration);
         flusherThread = new Thread(new FlusherTask());
         flusherThread.start();
-        scheduledExecutorService = Executors.newScheduledThreadPool(2);
-        scheduledExecutorService.scheduleAtFixedRate(new CompactionTask(), 2000, 2000, TimeUnit.MILLISECONDS);
     }
 
     @NotNull
@@ -127,20 +119,25 @@ public final class LSMDao implements DAO {
     public void close() throws IOException {
         memoryTablePool.close();
         try {
-            scheduledExecutorService.shutdownNow();
             flusherThread.join();
         } catch (InterruptedException e) {
            Thread.currentThread().interrupt();
         }
     }
 
-    private void compact(long value) throws IOException {
-        logger.info("Prepare to compact...");
-        for(final SSTable ssTable : ssTables.values()) {
+    @Override
+    public void compact() throws IOException {
+        final Iterator <Cluster> data = clusterIterator(SMALLEST_KEY);
+        final long generation;
+        generation = memoryTablePool.getGeneration();
+        flush(generation, data);
+        ssTables = new ConcurrentSkipListMap<>();
+        final long prevGen = generation-1;
+        ssTables.put(prevGen , new SSTable(new File(directory, FILE_NAME + prevGen + SUFFIX_DAT)));
+
+        for(final SSTable ssTable: ssTables.values()) {
             Files.delete(ssTable.getTable().toPath());
         }
-        ssTables = new ConcurrentSkipListMap<>();
-        ssTables.put(value-1 , new SSTable(new File(directory, FILE_NAME + --value + SUFFIX_DAT)));
     }
 
     private void flush(final long generation, final Iterator <Cluster> data) throws IOException {
@@ -175,25 +172,6 @@ public final class LSMDao implements DAO {
                     Thread.currentThread().interrupt();
                 } catch (IOException e) {
                     logger.info("IO Error" + e.getMessage());
-                }
-            }
-        }
-    }
-
-    private final class CompactionTask implements Runnable {
-
-        @Override
-        public void run() {
-            while (!Thread.currentThread().isInterrupted()) {
-                if(ssTables.descendingMap().values().size() > compactLimit) {
-                    try {
-                        logger.info("Prepare to compaction in compaction task : " + this.toString());
-                        final long generation = memoryTablePool.getGeneration();
-                        flush(generation, clusterIterator(SMALLEST_KEY));
-                        compact(generation);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
                 }
             }
         }
