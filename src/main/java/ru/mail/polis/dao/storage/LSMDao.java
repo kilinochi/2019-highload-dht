@@ -19,7 +19,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.ArrayList;
@@ -66,7 +65,8 @@ public final class LSMDao implements DAO {
         this.directory = directory;
         ssTables = new ConcurrentSkipListMap<>();
         long maxGeneration = 0;
-        final Collection<File> files = Files.find(directory.toPath(), 1, ((path, basicFileAttributes) -> basicFileAttributes.isRegularFile()
+        final List <File> files = Files.find(directory.toPath(), 1, ((path, basicFileAttributes)
+                -> basicFileAttributes.isRegularFile()
                         && FILE_NAME_PATTERN.matcher(path.getFileName().toString()).find()
                         && path.getFileName().toString().endsWith(SUFFIX_DAT)))
                 .map(Path::toFile)
@@ -134,13 +134,13 @@ public final class LSMDao implements DAO {
         }
     }
 
-    private void compact(long generation) throws IOException {
-        logger.info("Prepare to compact");
+    private void compact(long value) throws IOException {
+        logger.info("Prepare to compact...");
         for(SSTable ssTable : ssTables.values()) {
             Files.delete(ssTable.getTable().toPath());
         }
         ssTables = new ConcurrentSkipListMap<>();
-        ssTables.put(generation-1 , new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT)));
+        ssTables.put(value-1 , new SSTable(new File(directory, FILE_NAME + --value + SUFFIX_DAT)));
     }
 
     private void flush(final long generation, final Iterator <Cluster> data) throws IOException {

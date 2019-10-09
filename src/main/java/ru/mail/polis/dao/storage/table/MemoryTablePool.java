@@ -46,6 +46,11 @@ public final class MemoryTablePool implements Table, Closeable {
         this.flushingQueue = new ArrayBlockingQueue<>(2);
     }
 
+    /**
+    * return current generation of Pool.
+     *
+     * */
+
     public long getGeneration() {
         lock.readLock().lock();
         try {
@@ -72,7 +77,7 @@ public final class MemoryTablePool implements Table, Closeable {
 
     @NotNull
     @Override
-    public Iterator<Cluster> iterator(@NotNull ByteBuffer from) {
+    public Iterator<Cluster> iterator(final @NotNull ByteBuffer from) {
         lock.readLock().lock();
         final Collection<Iterator<Cluster>> iterators;
         try {
@@ -95,7 +100,7 @@ public final class MemoryTablePool implements Table, Closeable {
 
 
     @Override
-    public void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value) {
+    public void upsert(final @NotNull ByteBuffer key, final @NotNull ByteBuffer value) {
         if(stop.get()) {
             throw new IllegalStateException("Already stopped!");
         }
@@ -104,7 +109,7 @@ public final class MemoryTablePool implements Table, Closeable {
     }
 
     @Override
-    public void remove(@NotNull ByteBuffer key) {
+    public void remove(final @NotNull ByteBuffer key) {
         if(stop.get()) {
             throw new IllegalStateException("Already stopped!");
         }
@@ -132,7 +137,7 @@ public final class MemoryTablePool implements Table, Closeable {
         }
     }
 
-    private void enqueueFlush () {
+    private void enqueueFlush() {
         if(currentMemoryTable.size() > flushLimit) {
             lock.writeLock().lock();
             TableToFlush tableToFlush = null;
