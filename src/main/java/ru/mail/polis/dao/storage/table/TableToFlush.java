@@ -5,7 +5,8 @@ public final class TableToFlush {
     private final Table table;
     private final boolean poisonPills;
 
-    TableToFlush(long generation, Table table,
+    TableToFlush(final long generation,
+                 final Table table,
                  final boolean poisonPills) {
         this.generation = generation;
         this.table = table;

@@ -81,8 +81,8 @@ public final class LSMDao implements DAO {
         memoryTablePool = new MemoryTablePool(flushLimit, maxGeneration);
         flusherThread = new Thread(new FlusherTask());
         flusherThread.start();
-        scheduledExecutorService = Executors.newScheduledThreadPool(1);
-        scheduledExecutorService.scheduleAtFixedRate(new CompactionTask(), 100, 100, TimeUnit.MILLISECONDS);
+        scheduledExecutorService = Executors.newScheduledThreadPool(2);
+        scheduledExecutorService.scheduleAtFixedRate(new CompactionTask(), 2000, 2000, TimeUnit.MILLISECONDS);
     }
 
     @NotNull
@@ -136,7 +136,7 @@ public final class LSMDao implements DAO {
 
     private void compact(long value) throws IOException {
         logger.info("Prepare to compact...");
-        for(SSTable ssTable : ssTables.values()) {
+        for(final SSTable ssTable : ssTables.values()) {
             Files.delete(ssTable.getTable().toPath());
         }
         ssTables = new ConcurrentSkipListMap<>();
@@ -144,7 +144,7 @@ public final class LSMDao implements DAO {
     }
 
     private void flush(final long generation, final Iterator <Cluster> data) throws IOException {
-        long startFlushTime = System.currentTimeMillis();
+        final long startFlushTime = System.currentTimeMillis();
         logger.info("Flush start in: " + startFlushTime + " with generation: " + generation);
 
         if(data.hasNext()) {

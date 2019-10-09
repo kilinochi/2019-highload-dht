@@ -23,8 +23,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public final class MemoryTablePool implements Table, Closeable {
 
     private volatile MemTable currentMemoryTable;
-    private NavigableMap<Long, Table> pendingToFlushTables;
-    private BlockingQueue <TableToFlush> flushingQueue;
+    private final NavigableMap<Long, Table> pendingToFlushTables;
+    private final BlockingQueue <TableToFlush> flushingQueue;
     private long generation;
 
     private final long flushLimit;
@@ -65,7 +65,7 @@ public final class MemoryTablePool implements Table, Closeable {
         lock.readLock().lock();
         try {
             long size = currentMemoryTable.size();
-            for (Map.Entry<Long, Table> table: pendingToFlushTables.entrySet()) {
+            for (final Map.Entry<Long, Table> table: pendingToFlushTables.entrySet()) {
                 size = size + table.getValue().size();
             }
             return size;
