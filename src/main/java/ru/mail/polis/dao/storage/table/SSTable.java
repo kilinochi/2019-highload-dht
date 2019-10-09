@@ -124,6 +124,7 @@ public final class SSTable implements Table {
      * @param from is the key, which help to find necessary
      *             clusters of data
      **/
+    @NotNull
     @Override
     public Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
         return new Iterator<>() {

@@ -33,7 +33,7 @@ public final class RestService extends HttpServer implements Service {
     }
 
     @Path("/v0"+ENTITY_PATH)
-    public Response entity (@Param("id") final String id, final Request request) {
+    public Response entity (@Param ("id") final String id, final Request request) {
 
         if(id == null || id.isEmpty()) {
             return new Response(Response.BAD_REQUEST, "Key not found".getBytes(Charsets.UTF_8));

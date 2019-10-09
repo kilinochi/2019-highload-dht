@@ -10,16 +10,24 @@ import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.cluster.Cluster;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
-import ru.mail.polis.dao.storage.table.Table;
 import ru.mail.polis.dao.storage.table.TableToFlush;
 import ru.mail.polis.dao.storage.utils.GenerationUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NavigableMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -37,6 +45,7 @@ public final class LSMDao implements DAO {
     private final long compactLimit;
     private final Thread flusherThread;
     private final MemoryTablePool memoryTablePool;
+    private final ScheduledExecutorService scheduledExecutorService;
 
     private NavigableMap<Long, SSTable> ssTables;
 
@@ -57,7 +66,7 @@ public final class LSMDao implements DAO {
         this.directory = directory;
         ssTables = new ConcurrentSkipListMap<>();
         long maxGeneration = 0;
-        final Collection <File> files = Files.find(directory.toPath(), 1, ((path, basicFileAttributes) -> basicFileAttributes.isRegularFile()
+        final Collection<File> files = Files.find(directory.toPath(), 1, ((path, basicFileAttributes) -> basicFileAttributes.isRegularFile()
                         && FILE_NAME_PATTERN.matcher(path.getFileName().toString()).find()
                         && path.getFileName().toString().endsWith(SUFFIX_DAT)))
                 .map(Path::toFile)
@@ -72,6 +81,8 @@ public final class LSMDao implements DAO {
         memoryTablePool = new MemoryTablePool(flushLimit, maxGeneration);
         flusherThread = new Thread(new FlusherTask());
         flusherThread.start();
+        scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        scheduledExecutorService.scheduleAtFixedRate(new CompactionTask(), 100, 100, TimeUnit.MILLISECONDS);
     }
 
     @NotNull
@@ -105,52 +116,34 @@ public final class LSMDao implements DAO {
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) throws IOException {
         memoryTablePool.upsert(key, value);
-        if(ssTables.values().size() > compactLimit) {
-            compact();
-        }
     }
 
     @Override
     public void remove(@NotNull final ByteBuffer key) throws IOException {
         memoryTablePool.remove(key);
-        if(ssTables.values().size() > compactLimit) {
-            compact();
-        }
     }
 
     @Override
     public void close() throws IOException {
         memoryTablePool.close();
         try {
+            scheduledExecutorService.shutdownNow();
             flusherThread.join();
         } catch (InterruptedException e) {
            Thread.currentThread().interrupt();
         }
     }
 
-    @Override
-    public void compact() throws IOException {
-        final Iterator<Cluster> data = clusterIterator(SMALLEST_KEY);
-        /*flush(data);
-        ssTables.forEach(ssTables.descendingMap(). -> {
-            try {
-                Files.delete(ssTable.toPath());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-        ssTables = new ConcurrentSkipListMap<>();
-        //ssTables.add(new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));
-        ssTables.put()*/
+    private void compact(long generation) throws IOException {
+        logger.info("Prepare to compact");
         for(SSTable ssTable : ssTables.values()) {
             Files.delete(ssTable.getTable().toPath());
         }
         ssTables = new ConcurrentSkipListMap<>();
-        ssTables.put(new SSTable())
+        ssTables.put(generation-1 , new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT)));
     }
 
-    private void flush(final long generation, final Table table) throws IOException {
-        Iterator <Cluster> data = table.iterator(SMALLEST_KEY);
+    private void flush(final long generation, final Iterator <Cluster> data) throws IOException {
         long startFlushTime = System.currentTimeMillis();
         logger.info("Flush start in: " + startFlushTime + " with generation: " + generation);
 
@@ -176,12 +169,31 @@ public final class LSMDao implements DAO {
                     logger.info("Prepare to flush in flusher task: " + this.toString());
                     tableToFlush = memoryTablePool.tableToFlush();
                     poisonReceived = tableToFlush.isPoisonPills();
-                    flush(tableToFlush.getGeneration(), tableToFlush.getTable());
+                    flush(tableToFlush.getGeneration(), tableToFlush.getTable().iterator(SMALLEST_KEY));
                     memoryTablePool.flushed(tableToFlush.getGeneration());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IOException e) {
                     logger.info("IO Error" + e.getMessage());
+                }
+            }
+        }
+    }
+
+    private final class CompactionTask implements Runnable {
+
+        @Override
+        public void run() {
+            while (!Thread.currentThread().isInterrupted()) {
+                if(ssTables.descendingMap().values().size() > compactLimit) {
+                    try {
+                        logger.info("Prepare to compaction in compaction task : " + this.toString());
+                        final long generation = memoryTablePool.getGeneration();
+                        flush(generation, clusterIterator(SMALLEST_KEY));
+                        compact(generation);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }

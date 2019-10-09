@@ -8,8 +8,11 @@ import java.util.Iterator;
 
 public interface Table {
     long size();
+
     @NotNull
     Iterator <Cluster> iterator(@NotNull final ByteBuffer from);
+
     void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value);
+
     void remove(@NotNull ByteBuffer key);
 }

@@ -11,6 +11,21 @@ public final class ClusterValue implements Comparable<ClusterValue> {
     private final long timestamp;
     private final boolean tombstone;
 
+    /**
+     * Persistence cluster value.
+     *
+     * @param data is the data of Value
+     * @param timestamp is time witch this value is written
+     * @param isDead is flag of alive or not this value
+     *
+     **/
+
+    public ClusterValue(final ByteBuffer data, final long timestamp, final boolean isDead) {
+        this.data = data;
+        this.timestamp = timestamp;
+        this.tombstone = isDead;
+    }
+
     public static ClusterValue of(@NotNull final ByteBuffer data) {
         return new ClusterValue(data.duplicate(), TimeUtils.getTimeNanos(), false);
     }
@@ -25,12 +40,6 @@ public final class ClusterValue implements Comparable<ClusterValue> {
 
     public ByteBuffer getData() {
         return data;
-    }
-
-    public ClusterValue(final ByteBuffer data, final long timestamp, final boolean isDead) {
-        this.data = data;
-        this.timestamp = timestamp;
-        this.tombstone = isDead;
     }
 
     public boolean isTombstone() {

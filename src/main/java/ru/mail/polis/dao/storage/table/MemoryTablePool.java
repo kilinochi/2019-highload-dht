@@ -31,6 +31,13 @@ public final class MemoryTablePool implements Table, Closeable {
     private final AtomicBoolean stop = new AtomicBoolean();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+    /**
+     * Pool of mem table to flush.
+     *
+     * @param flushLimit is the limit above which we flushing mem table
+     * @param startGeneration is the start of generation
+     **/
+
     public MemoryTablePool(final long flushLimit, final long startGeneration) {
         this.flushLimit = flushLimit;
         this.generation = startGeneration;
@@ -39,6 +46,14 @@ public final class MemoryTablePool implements Table, Closeable {
         this.flushingQueue = new ArrayBlockingQueue<>(2);
     }
 
+    public long getGeneration() {
+        lock.readLock().lock();
+        try {
+            return generation;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
 
     @Override
     public long size() {
@@ -100,6 +115,12 @@ public final class MemoryTablePool implements Table, Closeable {
     public TableToFlush tableToFlush() throws InterruptedException {
         return flushingQueue.take();
     }
+
+    /**
+    * Mark mem table as flushed and remove her from map storage of tables.
+    * @param generation is key by which we remove table from storage
+    *
+    * */
 
     public void flushed(final long generation) {
         lock.writeLock().lock();

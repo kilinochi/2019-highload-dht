@@ -7,6 +7,9 @@ public final class TimeUtils  {
     private TimeUtils() {
     }
 
+    /**
+     * Get time in millis and add plus to this value nanos.
+     **/
     public static long getTimeNanos() {
         final long currTime = System.currentTimeMillis();
         if(currTime != lastTime) {
