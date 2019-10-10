@@ -24,9 +24,9 @@ public final class IteratorUtils {
      * @param sstables is collection witch collapse theirs iters with table
      * @param from is key from we get data
      * */
-    public static Iterator<Cluster> data (@NotNull final Table table,
-                                                @NotNull final NavigableMap <Long, SSTable> sstables,
-                                                @NotNull final ByteBuffer from) {
+    public static Iterator<Cluster> data(@NotNull final Table table,
+                                         @NotNull final NavigableMap <Long, SSTable> sstables,
+                                         @NotNull final ByteBuffer from) {
         List <Iterator<Cluster>> list = new ArrayList<>();
         for (final Table fromOther : sstables.values()) {
                 list.add(fromOther.iterator(from));

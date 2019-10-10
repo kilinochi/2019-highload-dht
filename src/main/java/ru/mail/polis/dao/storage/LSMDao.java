@@ -23,8 +23,10 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.NavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -120,24 +122,27 @@ public final class LSMDao implements DAO {
     }
 
     @Override
-    public void flush(long generation, final boolean isCompactFlush, @NotNull Iterator<Cluster> data) throws IOException {
+    public void flush(final long currentGeneration,
+                      final boolean isCompactFlush,
+                      @NotNull Iterator<Cluster> data) throws IOException {
         final long startFlushTime = System.currentTimeMillis();
-        logger.info("Flush start in: " + startFlushTime + " with generation: " + generation);
+        logger.info("Flush start in: " + startFlushTime + " with generation: " + currentGeneration);
 
         if(data.hasNext()) {
-            final File tmp = new File(directory, FILE_NAME + generation + SUFFIX_TMP);
+            final File tmp = new File(directory, FILE_NAME + currentGeneration + SUFFIX_TMP);
             SSTable.writeToFile(data, tmp);
-            final File database = new File(directory, FILE_NAME + generation + SUFFIX_DAT);
+            final File database = new File(directory, FILE_NAME + currentGeneration + SUFFIX_DAT);
             Files.move(tmp.toPath(), database.toPath(), StandardCopyOption.ATOMIC_MOVE);
-        }
-        if(isCompactFlush) {
-            for(final SSTable ssTable : ssTables.values()) {
-                Files.delete(ssTable.getTable().toPath());
+            if(isCompactFlush) {
+                for(final SSTable ssTable : ssTables.values()) {
+                    Files.delete(ssTable.getTable().toPath());
+                }
+                ssTables = new ConcurrentSkipListMap<>();
+                ssTables.put(currentGeneration,
+                                new SSTable(new File(directory, FILE_NAME + currentGeneration + SUFFIX_DAT), currentGeneration));
             }
-            ssTables = new ConcurrentSkipListMap<>();
-            ssTables.put(generation, new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));
         }
-        logger.info("Flush end in: " + System.currentTimeMillis() + " with generation: " + generation);
+        logger.info("Flush end in: " + System.currentTimeMillis() + " with generation: " + currentGeneration);
         logger.info("Estimated time: " + (System.currentTimeMillis() - startFlushTime));
     }
 }

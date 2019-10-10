@@ -87,7 +87,10 @@ public interface DAO extends Closeable {
     }
 
     /**
-     * Flush values
+     * Flush values.
+     * @param generation is generation which have new SSTable
+     * @param compactFlush is mark if limit not regular
+     * @param data is data which we send to table
      * */
     void flush(final long generation,
                final boolean compactFlush,

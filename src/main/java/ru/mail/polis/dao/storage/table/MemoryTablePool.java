@@ -148,6 +148,11 @@ public final class MemoryTablePool implements Table, Closeable {
         compacted.compareAndSet(true, false);
     }
 
+    /**
+     * Compact values from all tables with current table.
+     * @param sstable is all tables from disk storage
+     *
+     * */
 
     public void compact(@NotNull final NavigableMap <Long, SSTable> sstable) {
         lock.readLock().lock();
@@ -184,7 +189,9 @@ public final class MemoryTablePool implements Table, Closeable {
             TableToFlush tableToFlush = null;
             try {
                 if (currentMemoryTable.size() > flushLimit) {
-                    tableToFlush = new TableToFlush(generation, currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER), false);
+                    tableToFlush = new TableToFlush(generation,
+                            currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER),
+                            false);
                     pendingToFlushTables.put(generation, currentMemoryTable);
                     generation = generation + 1;
                     currentMemoryTable = new MemTable(generation);
