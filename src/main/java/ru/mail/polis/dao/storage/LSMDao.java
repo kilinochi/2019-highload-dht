@@ -31,12 +31,12 @@ public final class LSMDao implements DAO {
 
     private static final Logger logger = LoggerFactory.getLogger(LSMDao.class);
 
-    public static final int COMPACT_SIZE = 15;
+    private static final int COMPACT_SIZE = 15;
     private static final String SUFFIX_DAT = ".dat";
     private static final String SUFFIX_TMP = ".tmp";
     private static final String FILE_NAME = "SSTable_";
     private static final Pattern FILE_NAME_PATTERN = Pattern.compile(FILE_NAME);
-    private static final ByteBuffer SMALLEST_KEY = ByteBuffer.allocate(0);
+    private static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
     private final File directory;
     private final Thread flusherThread;
@@ -127,17 +127,13 @@ public final class LSMDao implements DAO {
 
     @Override
     public void compact() throws IOException {
-        final Iterator <Cluster> data = clusterIterator(SMALLEST_KEY);
+        final Iterator <Cluster> data = clusterIterator(EMPTY_BUFFER);
         final long generation;
         generation = memoryTablePool.getGeneration();
         flush(generation, data);
         ssTables = new ConcurrentSkipListMap<>();
         final long prevGen = generation-1;
         ssTables.put(prevGen , new SSTable(new File(directory, FILE_NAME + prevGen + SUFFIX_DAT)));
-
-        for(final SSTable ssTable: ssTables.values()) {
-            Files.delete(ssTable.getTable().toPath());
-        }
     }
 
     private void flush(final long generation, final Iterator <Cluster> data) throws IOException {
@@ -165,13 +161,15 @@ public final class LSMDao implements DAO {
                 try {
                     logger.info("Prepare to flush in flusher task: " + this.toString());
                     tableToFlush = memoryTablePool.tableToFlush();
+                    final Iterator <Cluster> data = tableToFlush.getTable().iterator(EMPTY_BUFFER);
+                    final long generation = tableToFlush.getGeneration();
                     poisonReceived = tableToFlush.isPoisonPills();
-                    flush(tableToFlush.getGeneration(), tableToFlush.getTable().iterator(SMALLEST_KEY));
-                    memoryTablePool.flushed(tableToFlush.getGeneration());
+                    flush(generation, data);
+                    memoryTablePool.flushed(generation);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IOException e) {
-                    logger.info("IO Error" + e.getMessage());
+                    logger.info("IO Error " + e.getMessage());
                 }
             }
         }
