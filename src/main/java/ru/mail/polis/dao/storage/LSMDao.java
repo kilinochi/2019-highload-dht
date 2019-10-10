@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cluster.Cluster;
-import ru.mail.polis.dao.storage.task.FlusherTask;
+import ru.mail.polis.dao.storage.table.TableToFlush;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.utils.GenerationUtils;
@@ -34,10 +34,9 @@ import java.util.regex.Pattern;
 public final class LSMDao implements DAO {
 
     public static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
-    private static final String SUFFIX_DAT = ".dat";
-    private static final String SUFFIX_TMP = ".tmp";
-    private static final String FILE_NAME = "SSTable_";
 
+    private static final String SUFFIX_DAT = ".dat";
+    private static final String FILE_NAME = "SSTable_";
     private static final Logger logger = LoggerFactory.getLogger(LSMDao.class);
     private static final Pattern FILE_NAME_PATTERN = Pattern.compile(FILE_NAME);
 
@@ -77,8 +76,7 @@ public final class LSMDao implements DAO {
         });
         maxGeneration.set(maxGeneration.get() + 1);
         memoryTablePool = new MemoryTablePool(flushLimit, maxGeneration.get());
-        final FlusherTask flusherTask = new FlusherTask(memoryTablePool, this);
-        flushedThread = new Thread(flusherTask);
+        flushedThread = new Thread(new FlusherTask());
         flushedThread.start();
     }
 
@@ -93,6 +91,28 @@ public final class LSMDao implements DAO {
 
     private Iterator<Cluster> clusterIterator(@NotNull final ByteBuffer from) {
         return IteratorUtils.data(memoryTablePool, ssTables, from);
+    }
+
+    private void compactDir(final long preGener) throws IOException {
+        ssTables = new ConcurrentSkipListMap<>();
+        Files.walkFileTree(directory.toPath(), EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs)
+                    throws IOException {
+                final File file = path.toFile();
+                final Matcher matcher = FILE_NAME_PATTERN.matcher(file.getName());
+                if (file.getName().endsWith(SUFFIX_DAT) && matcher.find()) {
+                    final long currentGeneration = GenerationUtils.fromPath(path);
+                    if(currentGeneration >= preGener) {
+                        ssTables.put(currentGeneration, new SSTable(file, currentGeneration));
+                        return FileVisitResult.CONTINUE;
+                    }
+                }
+                Files.delete(path);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        logger.info("Compaction done in time: " + System.currentTimeMillis());
     }
 
     @Override
@@ -117,32 +137,69 @@ public final class LSMDao implements DAO {
 
     @Override
     public void compact() throws IOException {
-        logger.info("Compaction table with size: " + ssTables.size());
+        logger.info("Compaction table with size: " + ssTables.size() + " and time: " + System.currentTimeMillis());
         memoryTablePool.compact(ssTables);
     }
 
-    @Override
-    public void flush(final long currentGeneration,
-                      final boolean isCompactFlush,
-                      @NotNull Iterator<Cluster> data) throws IOException {
+    private void compactFlush(final long currentGeneration,
+                              @NotNull final Iterator <Cluster> data) throws IOException {
         final long startFlushTime = System.currentTimeMillis();
         logger.info("Flush start in: " + startFlushTime + " with generation: " + currentGeneration);
-
         if(data.hasNext()) {
-            final File tmp = new File(directory, FILE_NAME + currentGeneration + SUFFIX_TMP);
-            SSTable.writeToFile(data, tmp);
-            final File database = new File(directory, FILE_NAME + currentGeneration + SUFFIX_DAT);
-            Files.move(tmp.toPath(), database.toPath(), StandardCopyOption.ATOMIC_MOVE);
-            if(isCompactFlush) {
-                for(final SSTable ssTable : ssTables.values()) {
-                    Files.delete(ssTable.getTable().toPath());
-                }
-                ssTables = new ConcurrentSkipListMap<>();
-                ssTables.put(currentGeneration,
-                                new SSTable(new File(directory, FILE_NAME + currentGeneration + SUFFIX_DAT), currentGeneration));
-            }
+            final Path path = Path.of(directory.getAbsolutePath(), FILE_NAME + currentGeneration + SUFFIX_DAT);
+            SSTable.writeToFile(data, path.toFile());
         }
         logger.info("Flush end in: " + System.currentTimeMillis() + " with generation: " + currentGeneration);
         logger.info("Estimated time: " + (System.currentTimeMillis() - startFlushTime));
+    }
+
+    private void flush(final long currentGeneration,
+                       final boolean isCompactFlush,
+                       @NotNull Iterator<Cluster> data) throws IOException {
+        final long startFlushTime = System.currentTimeMillis();
+        logger.info("Flush start in: " + startFlushTime + " with generation: " + currentGeneration);
+        if(data.hasNext()) {
+           final File sstable =  new File(directory, FILE_NAME + currentGeneration + SUFFIX_DAT);
+           SSTable.writeToFile(data, sstable);
+           if(isCompactFlush) {
+               ssTables.put(currentGeneration, new SSTable(sstable, currentGeneration));
+           }
+        }
+        logger.info("Flush end in: " + System.currentTimeMillis() + " with generation: " + currentGeneration);
+        logger.info("Estimated time: " + (System.currentTimeMillis() - startFlushTime));
+    }
+
+    private final class FlusherTask implements Runnable {
+
+        @Override
+        public void run() {
+            boolean poisonReceived = false;
+            while (!Thread.currentThread().isInterrupted() && !poisonReceived) {
+                TableToFlush tableToFlush;
+                try {
+                    logger.info("Prepare to flush in flusher task: " + this.toString());
+                    tableToFlush = memoryTablePool.tableToFlush();
+                    final Iterator<Cluster> data = tableToFlush.data();
+                    long currentGeneration = tableToFlush.getGeneration();
+                    poisonReceived = tableToFlush.isPoisonPills();
+                    boolean isCompactTable = tableToFlush.isCompactionTable();
+                    if(isCompactTable || poisonReceived) {
+                        flush(currentGeneration, true ,data);
+                    } else {
+                        flush(currentGeneration, false, data);
+                    }
+                    if(isCompactTable) {
+                        compactDir(currentGeneration);
+                        memoryTablePool.switchCompaction();
+                    } else {
+                        memoryTablePool.flushed(currentGeneration);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (IOException e) {
+                    logger.info("Error :" + e.getMessage());
+                }
+            }
+        }
     }
 }
