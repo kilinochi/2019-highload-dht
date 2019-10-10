@@ -26,7 +26,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.NavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -139,18 +139,6 @@ public final class LSMDao implements DAO {
     public void compact() throws IOException {
         logger.info("Compaction table with size: " + ssTables.size() + " and time: " + System.currentTimeMillis());
         memoryTablePool.compact(ssTables);
-    }
-
-    private void compactFlush(final long currentGeneration,
-                              @NotNull final Iterator <Cluster> data) throws IOException {
-        final long startFlushTime = System.currentTimeMillis();
-        logger.info("Flush start in: " + startFlushTime + " with generation: " + currentGeneration);
-        if(data.hasNext()) {
-            final Path path = Path.of(directory.getAbsolutePath(), FILE_NAME + currentGeneration + SUFFIX_DAT);
-            SSTable.writeToFile(data, path.toFile());
-        }
-        logger.info("Flush end in: " + System.currentTimeMillis() + " with generation: " + currentGeneration);
-        logger.info("Estimated time: " + (System.currentTimeMillis() - startFlushTime));
     }
 
     private void flush(final long currentGeneration,
