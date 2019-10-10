@@ -8,10 +8,12 @@ import java.util.Comparator;
 public final class Cluster {
 
     public static final Comparator<Cluster> COMPARATOR = Comparator.comparing(Cluster::getKey)
-            .thenComparing(Cluster::getClusterValue);
+            .thenComparing(Cluster::getClusterValue)
+            .thenComparing(Cluster::getGeneration, Comparator.reverseOrder());
 
     private final ByteBuffer key;
     private final ClusterValue clusterValue;
+    private final long generation;
 
     /**
      * Cluster is a memory cell in file.
@@ -19,14 +21,18 @@ public final class Cluster {
      * @param key is the key of this cell by which we can find this Cluster
      * @param clusterValue is the value in this cell
      **/
-    private Cluster(@NotNull final ByteBuffer key, @NotNull final ClusterValue clusterValue) {
+    private Cluster(@NotNull final ByteBuffer key,
+                    @NotNull final ClusterValue clusterValue,
+                    final long generation) {
         this.key = key;
         this.clusterValue = clusterValue;
+        this.generation = generation;
     }
 
     public static Cluster of(@NotNull final ByteBuffer key,
-                             @NotNull final ClusterValue value) {
-        return new Cluster(key, value);
+                             @NotNull final ClusterValue value,
+                             final long generation) {
+        return new Cluster(key, value, generation);
     }
 
     public ByteBuffer getKey() {
@@ -36,5 +42,9 @@ public final class Cluster {
 
     public ClusterValue getClusterValue() {
         return clusterValue;
+    }
+
+    public long getGeneration() {
+        return generation;
     }
 }

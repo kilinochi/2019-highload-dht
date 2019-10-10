@@ -46,7 +46,7 @@ public final class MemTable implements Table {
                     @NotNull
                     @Override
                     public Cluster apply(Map.@Nullable Entry<ByteBuffer, ClusterValue> input) {
-                        return Cluster.of(input.getKey(), input.getValue());
+                        return Cluster.of(input.getKey(), input.getValue(), generation.get());
                     }
                 });
 
