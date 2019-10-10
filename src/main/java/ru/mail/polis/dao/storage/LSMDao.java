@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cluster.Cluster;
-import ru.mail.polis.dao.storage.table.TableToFlush;
+import ru.mail.polis.dao.storage.table.FlushTable;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.utils.GenerationUtils;
@@ -22,7 +22,6 @@ import java.nio.file.Files;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.NavigableMap;
@@ -143,7 +142,7 @@ public final class LSMDao implements DAO {
 
     private void flush(final long currentGeneration,
                        final boolean isCompactFlush,
-                       @NotNull Iterator<Cluster> data) throws IOException {
+                       @NotNull final Iterator<Cluster> data) throws IOException {
         final long startFlushTime = System.currentTimeMillis();
         logger.info("Flush start in: " + startFlushTime + " with generation: " + currentGeneration);
         if(data.hasNext()) {
@@ -163,14 +162,14 @@ public final class LSMDao implements DAO {
         public void run() {
             boolean poisonReceived = false;
             while (!Thread.currentThread().isInterrupted() && !poisonReceived) {
-                TableToFlush tableToFlush;
+                FlushTable flushTable;
                 try {
                     logger.info("Prepare to flush in flusher task: " + this.toString());
-                    tableToFlush = memoryTablePool.tableToFlush();
-                    final Iterator<Cluster> data = tableToFlush.data();
-                    long currentGeneration = tableToFlush.getGeneration();
-                    poisonReceived = tableToFlush.isPoisonPills();
-                    boolean isCompactTable = tableToFlush.isCompactionTable();
+                    flushTable = memoryTablePool.tableToFlush();
+                    final Iterator<Cluster> data = flushTable.data();
+                    final long currentGeneration = flushTable.getGeneration();
+                    poisonReceived = flushTable.isPoisonPills();
+                    final boolean isCompactTable = flushTable.isCompactionTable();
                     if(isCompactTable || poisonReceived) {
                         flush(currentGeneration, true ,data);
                     } else {

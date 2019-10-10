@@ -26,7 +26,7 @@ public final class MemoryTablePool implements Table, Closeable {
 
     private volatile MemTable currentMemoryTable;
     private final NavigableMap<Long, Table> pendingToFlushTables;
-    private final BlockingQueue <TableToFlush> flushingQueue;
+    private final BlockingQueue <FlushTable> flushingQueue;
     private long generation;
 
     private final long flushLimit;
@@ -124,7 +124,7 @@ public final class MemoryTablePool implements Table, Closeable {
     /**
     * Take from queue table.
     **/
-    public TableToFlush tableToFlush() throws InterruptedException {
+    public FlushTable tableToFlush() throws InterruptedException {
         return flushingQueue.take();
     }
 
@@ -167,9 +167,9 @@ public final class MemoryTablePool implements Table, Closeable {
 
     private void compaction(@NotNull final Iterator <Cluster> data) {
         lock.writeLock().lock();
-        final TableToFlush table;
+        final FlushTable table;
         try {
-            table = new TableToFlush(generation, data, true);
+            table = new FlushTable(generation, data, true);
             generation = generation + 1;
             currentMemoryTable = new MemTable(generation);
             compacted.compareAndSet(false, true);
@@ -186,10 +186,10 @@ public final class MemoryTablePool implements Table, Closeable {
     private void enqueueFlush() {
         if(currentMemoryTable.size() > flushLimit) {
             lock.writeLock().lock();
-            TableToFlush tableToFlush = null;
+            FlushTable flushTable = null;
             try {
                 if (currentMemoryTable.size() > flushLimit) {
-                    tableToFlush = new TableToFlush(generation,
+                    flushTable = new FlushTable(generation,
                             currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER),
                             false);
                     pendingToFlushTables.put(generation, currentMemoryTable);
@@ -199,9 +199,9 @@ public final class MemoryTablePool implements Table, Closeable {
             } finally {
                 lock.writeLock().unlock();
             }
-            if(tableToFlush != null) {
+            if(flushTable != null) {
                 try {
-                    flushingQueue.put(tableToFlush);
+                    flushingQueue.put(flushTable);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -215,15 +215,15 @@ public final class MemoryTablePool implements Table, Closeable {
             return;
         }
         lock.writeLock().lock();
-        TableToFlush tableToFlush;
+        FlushTable flushTable;
         try {
-            tableToFlush = new TableToFlush(generation, currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER), true, false);
+            flushTable = new FlushTable(generation, currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER), true, false);
         } finally {
             lock.writeLock().unlock();
         }
 
         try {
-            flushingQueue.put(tableToFlush);
+            flushingQueue.put(flushTable);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

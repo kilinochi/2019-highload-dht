@@ -27,7 +27,7 @@ public final class IteratorUtils {
     public static Iterator<Cluster> data(@NotNull final Table table,
                                          @NotNull final NavigableMap <Long, SSTable> sstables,
                                          @NotNull final ByteBuffer from) {
-        List <Iterator<Cluster>> list = new ArrayList<>();
+        final List <Iterator<Cluster>> list = new ArrayList<>();
         for (final Table fromOther : sstables.values()) {
                 list.add(fromOther.iterator(from));
         }
