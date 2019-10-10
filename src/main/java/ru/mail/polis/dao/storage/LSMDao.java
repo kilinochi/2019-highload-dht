@@ -129,10 +129,12 @@ public final class LSMDao implements DAO {
             SSTable.writeToFile(data, tmp);
             final File database = new File(directory, FILE_NAME + generation + SUFFIX_DAT);
             Files.move(tmp.toPath(), database.toPath(), StandardCopyOption.ATOMIC_MOVE);
-        } if(isCompactFlush) {
+        }
+        if(isCompactFlush) {
             for(final SSTable ssTable : ssTables.values()) {
                 Files.delete(ssTable.getTable().toPath());
             }
+            ssTables = new ConcurrentSkipListMap<>();
             ssTables.put(generation, new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));
         }
         logger.info("Flush end in: " + System.currentTimeMillis() + " with generation: " + generation);
