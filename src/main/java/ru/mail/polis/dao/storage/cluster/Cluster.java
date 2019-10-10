@@ -8,8 +8,7 @@ import java.util.Comparator;
 public final class Cluster {
 
     public static final Comparator<Cluster> COMPARATOR = Comparator.comparing(Cluster::getKey)
-            .thenComparing(Cluster::getClusterValue)
-            .thenComparing(Cluster::getGeneration, Comparator.reverseOrder());
+            .thenComparing(Cluster::getClusterValue).thenComparing(Cluster::getGeneration, Comparator.reverseOrder());
 
     private final ByteBuffer key;
     private final ClusterValue clusterValue;
