@@ -3,7 +3,9 @@ package ru.mail.polis.dao.storage.table;
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
+import ru.mail.polis.dao.storage.LSMDao;
 import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.utils.IteratorUtils;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -29,6 +31,7 @@ public final class MemoryTablePool implements Table, Closeable {
 
     private final long flushLimit;
     private final AtomicBoolean stop = new AtomicBoolean();
+    private final AtomicBoolean compacted = new AtomicBoolean();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
@@ -41,23 +44,9 @@ public final class MemoryTablePool implements Table, Closeable {
     public MemoryTablePool(final long flushLimit, final long startGeneration) {
         this.flushLimit = flushLimit;
         this.generation = startGeneration;
-        this.currentMemoryTable = new MemTable();
+        this.currentMemoryTable = new MemTable(generation);
         this.pendingToFlushTables = new TreeMap<>();
         this.flushingQueue = new ArrayBlockingQueue<>(2);
-    }
-
-    /**
-    * return current generation of Pool.
-     *
-     * */
-
-    public long getGeneration() {
-        lock.readLock().lock();
-        try {
-            return generation;
-        } finally {
-            lock.readLock().unlock();
-        }
     }
 
     @Override
@@ -117,6 +106,24 @@ public final class MemoryTablePool implements Table, Closeable {
         enqueueFlush();
     }
 
+    /**
+     * Return current generation of Pool.
+     *
+     * */
+
+    @Override
+    public long generation() {
+        lock.readLock().lock();
+        try {
+            return generation;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
+    * Take from queue table.
+    **/
     public TableToFlush tableToFlush() throws InterruptedException {
         return flushingQueue.take();
     }
@@ -137,16 +144,50 @@ public final class MemoryTablePool implements Table, Closeable {
         }
     }
 
+    public void switchCompaction() {
+        compacted.compareAndSet(true, false);
+    }
+
+
+    public void compact(@NotNull final NavigableMap <Long, SSTable> sstable) {
+        lock.readLock().lock();
+        final Iterator <Cluster> data;
+        try {
+            data = IteratorUtils.data(currentMemoryTable, sstable, LSMDao.EMPTY_BUFFER);
+        } finally {
+            lock.readLock().unlock();
+        }
+        compaction(data);
+    }
+
+    private void compaction(@NotNull final Iterator <Cluster> data) {
+        lock.writeLock().lock();
+        final TableToFlush table;
+        try {
+            table = new TableToFlush(generation, data, true);
+            generation = generation + 1;
+            currentMemoryTable = new MemTable(generation);
+            compacted.compareAndSet(false, true);
+        } finally {
+            lock.writeLock().unlock();
+        }
+        try {
+            flushingQueue.put(table);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     private void enqueueFlush() {
         if(currentMemoryTable.size() > flushLimit) {
             lock.writeLock().lock();
             TableToFlush tableToFlush = null;
             try {
                 if (currentMemoryTable.size() > flushLimit) {
-                    tableToFlush = new TableToFlush(generation, currentMemoryTable);
+                    tableToFlush = new TableToFlush(generation, currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER), false);
                     pendingToFlushTables.put(generation, currentMemoryTable);
                     generation = generation + 1;
-                    currentMemoryTable = new MemTable();
+                    currentMemoryTable = new MemTable(generation);
                 }
             } finally {
                 lock.writeLock().unlock();
@@ -169,7 +210,7 @@ public final class MemoryTablePool implements Table, Closeable {
         lock.writeLock().lock();
         TableToFlush tableToFlush;
         try {
-            tableToFlush = new TableToFlush(generation, currentMemoryTable, true);
+            tableToFlush = new TableToFlush(generation, currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER), true, false);
         } finally {
             lock.writeLock().unlock();
         }

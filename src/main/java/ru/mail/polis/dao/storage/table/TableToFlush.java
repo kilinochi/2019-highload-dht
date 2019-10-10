@@ -1,31 +1,42 @@
 package ru.mail.polis.dao.storage.table;
 
+import ru.mail.polis.dao.storage.cluster.Cluster;
+
+import java.util.Iterator;
+
 public final class TableToFlush {
     private final long generation;
-    private final Table table;
+    private final Iterator <Cluster> data;
     private final boolean poisonPills;
+    private final boolean compactionTable;
 
     TableToFlush(final long generation,
-                 final Table table,
-                 final boolean poisonPills) {
+                 final Iterator <Cluster> data,
+                 final boolean poisonPills,
+                 final boolean compactionTable) {
         this.generation = generation;
-        this.table = table;
+        this.data = data;
         this.poisonPills = poisonPills;
+        this.compactionTable = compactionTable;
     }
 
-    TableToFlush(final long generation, final Table table) {
-        this(generation, table, false);
+    TableToFlush(final long generation, final Iterator <Cluster> data, final boolean compactionTable) {
+        this(generation, data, false, compactionTable);
     }
 
     public long getGeneration() {
         return generation;
     }
 
-    public Table getTable() {
-        return table;
+    public Iterator<Cluster> data() {
+        return data;
     }
 
     public boolean isPoisonPills() {
         return poisonPills;
+    }
+
+    public boolean isCompactionTable() {
+        return compactionTable;
     }
 }

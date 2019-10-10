@@ -21,8 +21,12 @@ public final class MemTable implements Table {
 
     private final NavigableMap<ByteBuffer, ClusterValue> storage = new ConcurrentSkipListMap<>();
     private final NavigableMap<ByteBuffer, ClusterValue> unmodifiable = Collections.unmodifiableNavigableMap(storage);
-    private AtomicLong tableSizeInBytes = new AtomicLong();
+    private final AtomicLong generation = new AtomicLong();
+    private final AtomicLong tableSizeInBytes = new AtomicLong();
 
+    MemTable(final long generation) {
+        this.generation.set(generation);
+    }
 
     /**
      * Get data as Iterator from in-memory storage by key.
@@ -83,6 +87,11 @@ public final class MemTable implements Table {
         } else if (!prev.isTombstone()) {
             tableSizeInBytes.addAndGet(-prev.getData().remaining());
         }
+    }
+
+    @Override
+    public long generation() {
+        return this.generation.get();
     }
 
     @Override

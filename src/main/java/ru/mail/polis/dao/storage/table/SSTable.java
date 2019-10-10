@@ -22,6 +22,7 @@ public final class SSTable implements Table {
     private final LongBuffer offsets;
     private final ByteBuffer clusters;
     private final File table;
+    private final long currentGeneration;
 
     /**
      * Write data as iterator in disk.
@@ -87,7 +88,7 @@ public final class SSTable implements Table {
      *
      * @param file is the file from which we read data
      **/
-    public SSTable(@NotNull final File file) throws IOException {
+    public SSTable(@NotNull final File file, final long currentGeneration) throws IOException {
         final long fileSize = file.length();
         final ByteBuffer mapped;
         try (
@@ -111,11 +112,7 @@ public final class SSTable implements Table {
         clusterBuffer.limit(offsetBuffer.position());
         this.clusters = clusterBuffer.slice();
         this.table = file;
-    }
-
-    @Override
-    public long size() {
-        return 0;
+        this.currentGeneration = currentGeneration;
     }
 
     /**
@@ -152,6 +149,16 @@ public final class SSTable implements Table {
     @Override
     public void remove(final @NotNull ByteBuffer key) {
         throw new UnsupportedOperationException("Not remove!");
+    }
+
+    @Override
+    public long generation() {
+        return currentGeneration;
+    }
+
+    @Override
+    public long size() {
+        return 0;
     }
 
     public File getTable() {

@@ -19,6 +19,7 @@ package ru.mail.polis.dao;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.mail.polis.Record;
+import ru.mail.polis.dao.storage.cluster.Cluster;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -85,6 +86,13 @@ public interface DAO extends Closeable {
         }
     }
 
+    /**
+     * Flush values
+     * */
+    void flush(final long generation,
+               final boolean compactFlush,
+               @NotNull final Iterator <Cluster> data
+    ) throws IOException;
     /**
      * Inserts or updates value by given key.
      */

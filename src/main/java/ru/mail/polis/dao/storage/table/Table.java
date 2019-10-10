@@ -15,4 +15,6 @@ public interface Table {
     void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value);
 
     void remove(@NotNull ByteBuffer key);
+
+    long generation();
 }

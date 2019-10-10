@@ -6,41 +6,42 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.task.FlusherTask;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
-import ru.mail.polis.dao.storage.table.TableToFlush;
 import ru.mail.polis.dao.storage.utils.GenerationUtils;
+import ru.mail.polis.dao.storage.utils.IteratorUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Iterator;
-import java.util.NavigableMap;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public final class LSMDao implements DAO {
 
-    private static final Logger logger = LoggerFactory.getLogger(LSMDao.class);
-
-    private static final int COMPACT_SIZE = 15;
+    public static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
     private static final String SUFFIX_DAT = ".dat";
     private static final String SUFFIX_TMP = ".tmp";
     private static final String FILE_NAME = "SSTable_";
+
+    private static final Logger logger = LoggerFactory.getLogger(LSMDao.class);
     private static final Pattern FILE_NAME_PATTERN = Pattern.compile(FILE_NAME);
-    private static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
     private final File directory;
-    private final Thread flusherThread;
     private final MemoryTablePool memoryTablePool;
+    private final Thread flushedThread;
 
     private NavigableMap<Long, SSTable> ssTables;
 
@@ -58,23 +59,25 @@ public final class LSMDao implements DAO {
         logger.info("Create dao :" + this.toString());
         this.directory = directory;
         ssTables = new ConcurrentSkipListMap<>();
-        long maxGeneration = 0;
-        final List <File> files = Files.find(directory.toPath(), 1, ((path, basicFileAttributes)
-                -> basicFileAttributes.isRegularFile()
-                        && FILE_NAME_PATTERN.matcher(path.getFileName().toString()).find()
-                        && path.getFileName().toString().endsWith(SUFFIX_DAT)))
-                .map(Path::toFile)
-                .collect(Collectors.toList());
-        for(final File curFile: files) {
-            final Path path = curFile.toPath();
-            final long currGeneration = GenerationUtils.fromPath(path);
-            ssTables.put(currGeneration, new SSTable(path.toFile()));
-            maxGeneration = Math.max(currGeneration, maxGeneration);
-        }
-        maxGeneration = maxGeneration + 1;
-        memoryTablePool = new MemoryTablePool(flushLimit, maxGeneration);
-        flusherThread = new Thread(new FlusherTask());
-        flusherThread.start();
+        final AtomicLong maxGeneration = new AtomicLong();
+        Files.walkFileTree(directory.toPath(), EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs)
+                    throws IOException {
+                final Matcher matcher = FILE_NAME_PATTERN.matcher(path.toString());
+                if (path.toString().endsWith(SUFFIX_DAT) && matcher.find()) {
+                    final long currentGeneration = GenerationUtils.fromPath(path);
+                    maxGeneration.set(Math.max(maxGeneration.get(), currentGeneration));
+                    ssTables.put(currentGeneration, new SSTable(path.toFile(), currentGeneration));
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        maxGeneration.set(maxGeneration.get() + 1);
+        memoryTablePool = new MemoryTablePool(flushLimit, maxGeneration.get());
+        final FlusherTask flusherTask = new FlusherTask(memoryTablePool, this);
+        flushedThread = new Thread(flusherTask);
+        flushedThread.start();
     }
 
     @NotNull
@@ -87,22 +90,7 @@ public final class LSMDao implements DAO {
     }
 
     private Iterator<Cluster> clusterIterator(@NotNull final ByteBuffer from) {
-        final List<Iterator<Cluster>> iters = new ArrayList<>();
-        for (final SSTable ssTable : this.ssTables.descendingMap().values()) {
-            iters.add(ssTable.iterator(from));
-        }
-
-        iters.add(memoryTablePool.iterator(from));
-        final Iterator<Cluster> clusterIterator = Iters.collapseEquals(
-                Iterators.mergeSorted(iters, Cluster.COMPARATOR),
-                Cluster::getKey
-        );
-        return Iterators.filter(
-                clusterIterator, cluster -> {
-                    assert cluster != null;
-                    return !cluster.getClusterValue().isTombstone();
-                }
-        );
+        return IteratorUtils.data(memoryTablePool, ssTables, from);
     }
 
     @Override
@@ -119,7 +107,7 @@ public final class LSMDao implements DAO {
     public void close() throws IOException {
         memoryTablePool.close();
         try {
-            flusherThread.join();
+            flushedThread.join();
         } catch (InterruptedException e) {
            Thread.currentThread().interrupt();
         }
@@ -127,16 +115,12 @@ public final class LSMDao implements DAO {
 
     @Override
     public void compact() throws IOException {
-        final Iterator <Cluster> data = clusterIterator(EMPTY_BUFFER);
-        final long generation;
-        generation = memoryTablePool.getGeneration();
-        flush(generation, data);
-        ssTables = new ConcurrentSkipListMap<>();
-        final long prevGen = generation-1;
-        ssTables.put(prevGen , new SSTable(new File(directory, FILE_NAME + prevGen + SUFFIX_DAT)));
+        logger.info("Compaction table with size: " + ssTables.size());
+        memoryTablePool.compact(ssTables);
     }
 
-    private void flush(final long generation, final Iterator <Cluster> data) throws IOException {
+    @Override
+    public void flush(long generation, final boolean isCompactFlush, @NotNull Iterator<Cluster> data) throws IOException {
         final long startFlushTime = System.currentTimeMillis();
         logger.info("Flush start in: " + startFlushTime + " with generation: " + generation);
 
@@ -145,33 +129,13 @@ public final class LSMDao implements DAO {
             SSTable.writeToFile(data, tmp);
             final File database = new File(directory, FILE_NAME + generation + SUFFIX_DAT);
             Files.move(tmp.toPath(), database.toPath(), StandardCopyOption.ATOMIC_MOVE);
-            ssTables.put(generation, new SSTable(database));
+        } if(isCompactFlush) {
+            for(final SSTable ssTable : ssTables.values()) {
+                Files.delete(ssTable.getTable().toPath());
+            }
+            ssTables.put(generation, new SSTable(new File(directory, FILE_NAME + --generation + SUFFIX_DAT), --generation));
         }
         logger.info("Flush end in: " + System.currentTimeMillis() + " with generation: " + generation);
         logger.info("Estimated time: " + (System.currentTimeMillis() - startFlushTime));
-    }
-
-    private final class FlusherTask implements Runnable {
-
-        @Override
-        public void run() {
-            boolean poisonReceived = false;
-            while (!Thread.currentThread().isInterrupted() && !poisonReceived) {
-                TableToFlush tableToFlush;
-                try {
-                    logger.info("Prepare to flush in flusher task: " + this.toString());
-                    tableToFlush = memoryTablePool.tableToFlush();
-                    final Iterator <Cluster> data = tableToFlush.getTable().iterator(EMPTY_BUFFER);
-                    final long generation = tableToFlush.getGeneration();
-                    poisonReceived = tableToFlush.isPoisonPills();
-                    flush(generation, data);
-                    memoryTablePool.flushed(generation);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } catch (IOException e) {
-                    logger.info("IO Error " + e.getMessage());
-                }
-            }
-        }
     }
 }
