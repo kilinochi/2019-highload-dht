@@ -21,23 +21,37 @@ public final class IteratorUtils {
     /**
      * Simple helper to collapse data from tables.
      * @param table is table witch collapse their iters with another tables
-     * @param sstables is collection witch collapse theirs iters with table
+     * @param tables is collection witch collapse theirs iters with table
      * @param from is key from we get data
      * */
     public static Iterator<Cluster> data(@NotNull final Table table,
-                                         @NotNull final NavigableMap <Long, SSTable> sstables,
+                                         @NotNull final NavigableMap <Long, Table> tables,
                                          @NotNull final ByteBuffer from) {
+        final List <Iterator<Cluster>> list = compose(table, tables, from);
+        final Iterator<Cluster> clusterIterator = collapseEquals(list);
+        return filter(clusterIterator);
+    }
+
+    public static List <Iterator<Cluster>> compose(
+            @NotNull final Table table,
+            @NotNull final NavigableMap <Long, Table> tables,
+            @NotNull final ByteBuffer from
+    ){
         final List <Iterator<Cluster>> list = new ArrayList<>();
-        for (final Table fromOther : sstables.values()) {
-                list.add(fromOther.iterator(from));
+        for (final Table fromOther : tables.values()) {
+            list.add(fromOther.iterator(from));
         }
         list.add(table.iterator(from));
-        final Iterator<Cluster> clusterIterator = Iters.collapseEquals(
-                Iterators.mergeSorted(list, Cluster.COMPARATOR),
-                Cluster::getKey
-        );
+        return list;
+    }
+
+    public static Iterator<Cluster> collapseEquals(@NotNull final List <Iterator<Cluster>> data) {
+        return Iters.collapseEquals(Iterators.mergeSorted(data, Cluster.COMPARATOR), Cluster::getKey);
+    }
+
+    public static Iterator<Cluster> filter(@NotNull final Iterator<Cluster> clusters) {
         return Iterators.filter(
-                clusterIterator, cluster -> {
+                clusters, cluster -> {
                     assert cluster != null;
                     return !cluster.getClusterValue().isTombstone();
                 }

@@ -150,7 +150,7 @@ public final class MemoryTablePool implements Table, Closeable {
      *
      * */
 
-    public void compact(@NotNull final NavigableMap <Long, SSTable> sstable) {
+    public void compact(@NotNull final NavigableMap <Long, Table> sstable) {
         lock.readLock().lock();
         final Iterator <Cluster> data;
         try {
