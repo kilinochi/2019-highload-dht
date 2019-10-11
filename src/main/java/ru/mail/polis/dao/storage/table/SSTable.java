@@ -1,9 +1,9 @@
 package ru.mail.polis.dao.storage.table;
 
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.dao.storage.BytesWrapper;
-import ru.mail.polis.dao.storage.Cluster;
-import ru.mail.polis.dao.storage.ClusterValue;
+import ru.mail.polis.dao.storage.utils.BytesUtils;
+import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.cluster.ClusterValue;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,13 +16,13 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public final class SSTable {
+public final class SSTable implements Table {
 
     private final int rows;
     private final LongBuffer offsets;
     private final ByteBuffer clusters;
-    private final long generation;
     private final File table;
+    private final long currentGeneration;
 
     /**
      * Write data as iterator in disk.
@@ -45,7 +45,7 @@ public final class SSTable {
                 // Write Key
                 final ByteBuffer key = cluster.getKey();
                 final int keySize = cluster.getKey().remaining();
-                fileChannel.write(BytesWrapper.fromInt(keySize));
+                fileChannel.write(BytesUtils.fromInt(keySize));
                 offset += Integer.BYTES; // 4 byte
                 final ByteBuffer keyDuplicate = key.duplicate();
                 fileChannel.write(keyDuplicate);
@@ -56,9 +56,9 @@ public final class SSTable {
 
                 // Write Timestamp
                 if (value.isTombstone()) {
-                    fileChannel.write(BytesWrapper.fromLong(-cluster.getClusterValue().getTimestamp()));
+                    fileChannel.write(BytesUtils.fromLong(-cluster.getClusterValue().getTimestamp()));
                 } else {
-                    fileChannel.write(BytesWrapper.fromLong(cluster.getClusterValue().getTimestamp()));
+                    fileChannel.write(BytesUtils.fromLong(cluster.getClusterValue().getTimestamp()));
                 }
                 offset += Long.BYTES; // 8 byte
 
@@ -67,7 +67,7 @@ public final class SSTable {
                 if (!value.isTombstone()) {
                     final ByteBuffer valueData = value.getData();
                     final int valueSize = value.getData().remaining();
-                    fileChannel.write(BytesWrapper.fromInt(valueSize));
+                    fileChannel.write(BytesUtils.fromInt(valueSize));
                     offset += Integer.BYTES; // 4 byte
                     fileChannel.write(valueData);
                     offset += valueSize;
@@ -76,10 +76,10 @@ public final class SSTable {
             }
             // Write Offsets
             for (final Long anOffset : offsets) {
-                fileChannel.write(BytesWrapper.fromLong(anOffset));
+                fileChannel.write(BytesUtils.fromLong(anOffset));
             }
             //Cells
-            fileChannel.write(BytesWrapper.fromLong(offsets.size()));
+            fileChannel.write(BytesUtils.fromLong(offsets.size()));
         }
     }
 
@@ -88,8 +88,7 @@ public final class SSTable {
      *
      * @param file is the file from which we read data
      **/
-    public SSTable(@NotNull final File file, final long generation) throws IOException {
-        this.generation = generation;
+    public SSTable(@NotNull final File file, final long currentGeneration) throws IOException {
         final long fileSize = file.length();
         final ByteBuffer mapped;
         try (
@@ -113,6 +112,7 @@ public final class SSTable {
         clusterBuffer.limit(offsetBuffer.position());
         this.clusters = clusterBuffer.slice();
         this.table = file;
+        this.currentGeneration = currentGeneration;
     }
 
     /**
@@ -121,8 +121,10 @@ public final class SSTable {
      * @param from is the key, which help to find necessary
      *             clusters of data
      **/
+    @NotNull
+    @Override
     public Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
-        return new Iterator<Cluster>() {
+        return new Iterator<>() {
 
             int next = position(from);
 
@@ -137,6 +139,26 @@ public final class SSTable {
                 return clusterAt(next++);
             }
         };
+    }
+
+    @Override
+    public void upsert(final @NotNull ByteBuffer key, final @NotNull ByteBuffer value) {
+        throw new UnsupportedOperationException("Not upsert!");
+    }
+
+    @Override
+    public void remove(final @NotNull ByteBuffer key) {
+        throw new UnsupportedOperationException("Not remove!");
+    }
+
+    @Override
+    public long generation() {
+        return currentGeneration;
+    }
+
+    @Override
+    public long size() {
+        return 0;
     }
 
     public File getTable() {
@@ -189,7 +211,7 @@ public final class SSTable {
         offset += Long.BYTES;
 
         if (timeStamp < 0) {
-            return new Cluster(key.slice(), new ClusterValue(null, -timeStamp, true), generation);
+            return Cluster.of(key.slice(), new ClusterValue(null, -timeStamp, true), currentGeneration);
         } else {
             final int valueSize = clusters.getInt((int) offset);
             offset += Integer.BYTES;
@@ -198,7 +220,7 @@ public final class SSTable {
             value.limit(value.position() + valueSize)
                     .position((int) offset)
                     .limit((int) (offset + valueSize));
-            return new Cluster(key.slice(), new ClusterValue(value.slice(), timeStamp, false), generation);
+            return Cluster.of(key.slice(), new ClusterValue(value.slice(), timeStamp, false), currentGeneration);
         }
     }
 }

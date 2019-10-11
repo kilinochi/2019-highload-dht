@@ -1,10 +1,15 @@
-package ru.mail.polis.dao.storage;
+package ru.mail.polis.dao.storage.utils;
 
 import java.nio.ByteBuffer;
 
-public final class BytesWrapper {
-    private BytesWrapper() {
+public final class BytesUtils {
+    private BytesUtils() {
     }
+
+    /**
+    * Bytes wrapper.
+    * @param value is value which we should be wrap
+    * */
 
     public static ByteBuffer fromInt(final int value) {
         final ByteBuffer result = ByteBuffer.allocate(Integer.BYTES);
@@ -12,6 +17,11 @@ public final class BytesWrapper {
         result.rewind();
         return result;
     }
+
+    /**
+     * Bytes wrapper.
+     * @param value is value which we should be wrap
+     * */
 
     public static ByteBuffer fromLong(final long value) {
         final ByteBuffer result = ByteBuffer.allocate(Long.BYTES);
