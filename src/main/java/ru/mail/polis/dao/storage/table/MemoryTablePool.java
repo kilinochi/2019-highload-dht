@@ -31,7 +31,6 @@ public final class MemoryTablePool implements Table, Closeable {
 
     private final long flushLimit;
     private final AtomicBoolean stop = new AtomicBoolean();
-    private final AtomicBoolean compacted = new AtomicBoolean();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
@@ -144,9 +143,6 @@ public final class MemoryTablePool implements Table, Closeable {
         }
     }
 
-    public void switchCompaction() {
-        compacted.compareAndSet(true, false);
-    }
 
     /**
      * Compact values from all tables with current table.
@@ -172,7 +168,6 @@ public final class MemoryTablePool implements Table, Closeable {
             table = new FlushTable(generation, data, true);
             generation = generation + 1;
             currentMemoryTable = new MemTable(generation);
-            compacted.compareAndSet(false, true);
         } finally {
             lock.writeLock().unlock();
         }

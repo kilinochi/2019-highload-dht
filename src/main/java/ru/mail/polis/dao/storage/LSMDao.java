@@ -177,7 +177,6 @@ public final class LSMDao implements DAO {
                     }
                     if(isCompactTable) {
                         compactDir(currentGeneration);
-                        memoryTablePool.switchCompaction();
                     } else {
                         memoryTablePool.flushed(currentGeneration);
                     }
