@@ -1,5 +1,7 @@
 package ru.mail.polis.exception;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.NoSuchElementException;
 
 
@@ -7,9 +9,9 @@ import java.util.NoSuchElementException;
  * Custom exception.
  * */
 
-public class NoSuchElementLite extends NoSuchElementException {
+public final class NoSuchElementLite extends NoSuchElementException {
 
-    public NoSuchElementLite(String s) {
+    public NoSuchElementLite(@NotNull final String s) {
         super(s);
     }
 
