@@ -56,9 +56,6 @@ public final class ServiceFactory {
         if (port <= 0 || 65536 <= port) {
             throw new IllegalArgumentException("Port out of range");
         }
-        Executor executor = Executors.newFixedThreadPool(
-                Runtime.getRuntime().availableProcessors(), new ThreadFactoryBuilder().setNameFormat("worker").build()
-        );
-        return new RestService(port, dao, executor);
+        return new RestService(port, dao);
     }
 }
