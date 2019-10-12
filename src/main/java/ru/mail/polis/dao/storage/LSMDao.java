@@ -2,8 +2,6 @@ package ru.mail.polis.dao.storage;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cluster.Cluster;
@@ -172,7 +170,7 @@ public final class LSMDao implements DAO {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IOException e) {
-                    e.getMessage();
+                    e.printStackTrace();
                 }
             }
         }

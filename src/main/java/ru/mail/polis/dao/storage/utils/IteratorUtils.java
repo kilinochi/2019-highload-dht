@@ -4,7 +4,6 @@ import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.cluster.Cluster;
-import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.table.Table;
 
 import java.nio.ByteBuffer;
@@ -32,6 +31,12 @@ public final class IteratorUtils {
         return filter(clusterIterator);
     }
 
+    /**
+     * Compose data from tables.
+     * @param table is table from witch we should be get Iterators by key
+     * @param tables is other tables from witch we should be get Iterators by key
+     * @param from is key from witch we should be get data
+     * */
     public static List <Iterator<Cluster>> compose(
             @NotNull final Table table,
             @NotNull final NavigableMap <Long, Table> tables,
@@ -45,10 +50,18 @@ public final class IteratorUtils {
         return list;
     }
 
+    /**
+     * Collapse equals iterators.
+     * @param data is iterators witch we must be collapse
+     * */
     public static Iterator<Cluster> collapseEquals(@NotNull final List <Iterator<Cluster>> data) {
         return Iters.collapseEquals(Iterators.mergeSorted(data, Cluster.COMPARATOR), Cluster::getKey);
     }
-
+    
+    /**
+     * Filter and get only alive Clusters.
+     * @param clusters is data which we should be filtered.
+     */
     public static Iterator<Cluster> filter(@NotNull final Iterator<Cluster> clusters) {
         return Iterators.filter(
                 clusters, cluster -> {

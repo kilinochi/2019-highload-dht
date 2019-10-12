@@ -19,7 +19,6 @@ package ru.mail.polis.dao;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.mail.polis.Record;
-import ru.mail.polis.exception.NoSuchElementLite;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -75,14 +74,14 @@ public interface DAO extends Closeable {
     default ByteBuffer get(@NotNull ByteBuffer key) throws IOException, NoSuchElementException {
         final Iterator<Record> iter = iterator(key);
         if (!iter.hasNext()) {
-            throw new NoSuchElementLite("Not found");
+            throw new NoSuchElementException("Not found");
         }
 
         final Record next = iter.next();
         if (next.getKey().equals(key)) {
             return next.getValue();
         } else {
-            throw new NoSuchElementLite("Not found");
+            throw new NoSuchElementException("Not found");
         }
     }
 
