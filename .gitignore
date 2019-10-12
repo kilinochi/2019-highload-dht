@@ -16,3 +16,5 @@
 !wrk/*
 # ...even if they are in subdirectories
 !*/
+!result.svg
+!wrk-stage-2.txt
