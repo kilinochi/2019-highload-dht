@@ -32,14 +32,11 @@ public final class MemTable implements Table {
      * Get data as Iterator from in-memory storage by key.
      *
      * @param from is the label which we can find data
-     *
-     * */
-
+     */
     @NotNull
     @Override
     public final Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
-
-        final Iterator <Cluster> value =  Iterators.transform(unmodifiable.tailMap(from)
+        final Iterator<Cluster> value = Iterators.transform(unmodifiable.tailMap(from)
                         .entrySet()
                         .iterator(),
                 new Function<Map.Entry<ByteBuffer, ClusterValue>, Cluster>() {
@@ -58,8 +55,7 @@ public final class MemTable implements Table {
      *
      * @param key   is the label which we can find data
      * @param value is the data
-     *
-     * */
+     */
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
         final ClusterValue prev = storage.put(key, ClusterValue.of(value));

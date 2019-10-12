@@ -91,8 +91,7 @@ public final class SSTable implements Table {
     public SSTable(@NotNull final File file, final long currentGeneration) throws IOException {
         final long fileSize = file.length();
         final ByteBuffer mapped;
-        try (
-                FileChannel fc = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
+        try (FileChannel fc = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
             assert fileSize <= Integer.MAX_VALUE;
             mapped = fc.map(FileChannel.MapMode.READ_ONLY, 0L, fileSize).order(ByteOrder.BIG_ENDIAN);
         }

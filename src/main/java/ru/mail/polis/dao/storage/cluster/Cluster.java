@@ -17,7 +17,7 @@ public final class Cluster {
     /**
      * Cluster is a memory cell in file.
      *
-     * @param key is the key of this cell by which we can find this Cluster
+     * @param key          is the key of this cell by which we can find this Cluster
      * @param clusterValue is the value in this cell
      **/
     private Cluster(@NotNull final ByteBuffer key,
@@ -37,7 +37,6 @@ public final class Cluster {
     public ByteBuffer getKey() {
         return key.asReadOnlyBuffer();
     }
-
 
     public ClusterValue getClusterValue() {
         return clusterValue;

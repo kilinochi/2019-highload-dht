@@ -26,7 +26,7 @@ public final class MemoryTablePool implements Table, Closeable {
 
     private volatile MemTable currentMemoryTable;
     private final NavigableMap<Long, Table> pendingToFlushTables;
-    private final BlockingQueue <FlushTable> flushingQueue;
+    private final BlockingQueue<FlushTable> flushingQueue;
     private long generation;
 
     private final long flushLimit;
@@ -36,7 +36,7 @@ public final class MemoryTablePool implements Table, Closeable {
     /**
      * Pool of mem table to flush.
      *
-     * @param flushLimit is the limit above which we flushing mem table
+     * @param flushLimit      is the limit above which we flushing mem table
      * @param startGeneration is the start of generation
      **/
 
@@ -53,15 +53,14 @@ public final class MemoryTablePool implements Table, Closeable {
         lock.readLock().lock();
         try {
             long size = currentMemoryTable.size();
-            for (final Map.Entry<Long, Table> table: pendingToFlushTables.entrySet()) {
+            for (final Map.Entry<Long, Table> table : pendingToFlushTables.entrySet()) {
                 size = size + table.getValue().size();
             }
             return size;
         } finally {
-           lock.readLock().unlock();
+            lock.readLock().unlock();
         }
     }
-
 
     @NotNull
     @Override
@@ -77,39 +76,46 @@ public final class MemoryTablePool implements Table, Closeable {
         } finally {
             lock.readLock().unlock();
         }
-        final Iterator <Cluster> merged = Iterators.mergeSorted(iterators, Cluster.COMPARATOR);
-        final Iterator <Cluster> withoutEquals = Iters.collapseEquals(merged, Cluster::getKey);
+        final Iterator<Cluster> merged = Iterators.mergeSorted(iterators, Cluster.COMPARATOR);
+        final Iterator<Cluster> withoutEquals = Iters.collapseEquals(merged, Cluster::getKey);
 
         return Iterators.filter(
-                        withoutEquals,
-                        input -> input.getClusterValue().getData() != null
+                withoutEquals,
+                input -> input.getClusterValue().getData() != null
         );
     }
 
-
     @Override
     public void upsert(final @NotNull ByteBuffer key, final @NotNull ByteBuffer value) {
-        if(stop.get()) {
+        if (stop.get()) {
             throw new IllegalStateException("Already stopped!");
         }
-        currentMemoryTable.upsert(key, value);
+        lock.readLock().lock();
+        try {
+            currentMemoryTable.upsert(key, value);
+        } finally {
+            lock.readLock().unlock();
+        }
         enqueueFlush();
     }
 
     @Override
     public void remove(final @NotNull ByteBuffer key) {
-        if(stop.get()) {
+        if (stop.get()) {
             throw new IllegalStateException("Already stopped!");
         }
-        currentMemoryTable.remove(key);
+        lock.readLock().lock();
+        try {
+            currentMemoryTable.remove(key);
+        } finally {
+            lock.readLock().unlock();
+        }
         enqueueFlush();
     }
 
     /**
      * Return current generation of Pool.
-     *
-     * */
-
+     */
     @Override
     public long generation() {
         lock.readLock().lock();
@@ -121,38 +127,34 @@ public final class MemoryTablePool implements Table, Closeable {
     }
 
     /**
-    * Take from queue table.
-    **/
+     * Take from queue table.
+     */
     public FlushTable tableToFlush() throws InterruptedException {
         return flushingQueue.take();
     }
 
     /**
-    * Mark mem table as flushed and remove her from map storage of tables.
-    * @param generation is key by which we remove table from storage
-    *
-    * */
-
+     * Mark mem table as flushed and remove her from map storage of tables.
+     *
+     * @param generation is key by which we remove table from storage
+     */
     public void flushed(final long generation) {
         lock.writeLock().lock();
         try {
             pendingToFlushTables.remove(generation);
-        }
-        finally {
+        } finally {
             lock.writeLock().unlock();
         }
     }
 
-
     /**
      * Compact values from all tables with current table.
-     * @param sstable is all tables from disk storage
      *
-     * */
-
-    public void compact(@NotNull final NavigableMap <Long, Table> sstable) {
+     * @param sstable is all tables from disk storage
+     */
+    public void compact(@NotNull final NavigableMap<Long, Table> sstable) {
         lock.readLock().lock();
-        final Iterator <Cluster> data;
+        final Iterator<Cluster> data;
         try {
             data = IteratorUtils.data(currentMemoryTable, sstable, LSMDao.EMPTY_BUFFER);
         } finally {
@@ -161,7 +163,7 @@ public final class MemoryTablePool implements Table, Closeable {
         compaction(data);
     }
 
-    private void compaction(@NotNull final Iterator <Cluster> data) {
+    private void compaction(@NotNull final Iterator<Cluster> data) {
         lock.writeLock().lock();
         final FlushTable table;
         try {
@@ -194,7 +196,7 @@ public final class MemoryTablePool implements Table, Closeable {
             } finally {
                 lock.writeLock().unlock();
             }
-            if(flushTable != null) {
+            if (flushTable != null) {
                 try {
                     flushingQueue.put(flushTable);
                 } catch (InterruptedException e) {
@@ -206,7 +208,7 @@ public final class MemoryTablePool implements Table, Closeable {
 
     @Override
     public void close() throws IOException {
-        if(!stop.compareAndSet(false, true)) {
+        if (!stop.compareAndSet(false, true)) {
             return;
         }
         lock.writeLock().lock();
