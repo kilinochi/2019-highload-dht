@@ -2,6 +2,7 @@ package ru.mail.polis.dao.storage;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cluster.Cluster;
@@ -143,6 +144,12 @@ public final class LSMDao implements DAO {
                 ssTables.put(currentGeneration, new SSTable(sstable, currentGeneration));
             }
         }
+    }
+
+    @NotNull
+    @Override
+    public Iterator<Record> range(@NotNull ByteBuffer from, @Nullable ByteBuffer to) throws IOException {
+        return null;
     }
 
     private final class FlusherTask implements Runnable {
