@@ -65,12 +65,12 @@ public final class RestService extends HttpServer implements Service {
     public void handleDefault(@NotNull final Request request,
                               @NotNull final HttpSession session) throws IOException {
         switch (request.getPath()) {
-            case "v0/" + ENTITY_PATH:
+            case "/v0" + ENTITY_PATH:
                 entity(request, session);
-                return;
-            case "v0/" + ENTITIES_PATH:
+                break;
+            case "/v0" + ENTITIES_PATH:
                 entities(request, session);
-                return;
+                break;
             default:
                 session.sendError(BAD_REQUEST, "Wrong path");
         }
@@ -88,25 +88,18 @@ public final class RestService extends HttpServer implements Service {
             switch (request.getMethod()) {
                 case Request.METHOD_GET:
                     executeAsync(session, () -> get(key));
-                    return;
+                    break;
                 case Request.METHOD_DELETE:
-                    executeAsync(session, new Action() {
-                        @Override
-                        public Response act() throws IOException {
-                            return delete(key);
-                        }
-                    });
-                    return;
+                    executeAsync(session, () -> delete(key));
+                    break;
                 case Request.METHOD_PUT:
                     executeAsync(session, ()-> upsert(key, request.getBody()));
-                    return;
+                    break;
                 default:
                     session.sendError(METHOD_NOT_ALLOWED, "Wrong method");
             }
         } catch (IOException e) {
             session.sendError(INTERNAL_ERROR, "Something wrong");
-        } catch (NoSuchElementException e) {
-            session.sendError(NOT_FOUND, "Not found resource");
         }
     }
 
@@ -163,14 +156,17 @@ public final class RestService extends HttpServer implements Service {
 
     private void executeAsync(
             @NotNull final HttpSession session,
-            @NotNull final Action action) {
-        workers.execute(new Runnable() {
-            @Override
-            public void run() {
+            @NotNull final Action action)  {
+        workers.execute(() -> {
+            try {
+                session.sendResponse(action.act());
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (NoSuchElementException e) {
                 try {
-                    session.sendResponse(action.act());
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    session.sendError(NOT_FOUND, "Not found resource");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
                 }
             }
         });
