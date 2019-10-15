@@ -20,9 +20,9 @@ public final class StorageSession extends HttpSession {
 
     private static final Logger logger = LoggerFactory.getLogger(StorageSession.class);
     private static final Charset UTF_8 = Charsets.UTF_8;
-    private static final byte[] CRLF = "\r\n".getBytes(UTF_8);
-    private static final byte[] DELIMITER = "\n".getBytes(UTF_8);
-    private static final byte[] EMPTY_CHUNK = "0\r\n\r\n".getBytes(UTF_8);
+    private static final byte[] CRLF = "\r\n".getBytes(Charsets.UTF_8);
+    private static final byte[] DELIMITER = "\n".getBytes(Charsets.UTF_8);
+    private static final byte[] EMPTY_CHUNK = "0\r\n\r\n".getBytes(Charsets.UTF_8);
 
     private Iterator<Record> data;
 
@@ -54,16 +54,18 @@ public final class StorageSession extends HttpSession {
         }
         if(!data.hasNext()) {
             write(EMPTY_CHUNK, 0, EMPTY_CHUNK.length);
+
             server.incRequestsProcessed();
-        }
-        if((handling = pipeline.pollFirst()) != null) {
-            if(handling == FIN) {
-                scheduleClose();
-            } else {
-                try {
-                    server.handleRequest(handling, this);
-                } catch (IOException e) {
-                    logger.info("Error" + e.getMessage());
+
+            if((handling = pipeline.pollFirst()) != null) {
+                if(handling == FIN) {
+                    scheduleClose();
+                } else {
+                    try {
+                        server.handleRequest(handling, this);
+                    } catch (IOException e) {
+                        logger.info("Error" + e.getMessage());
+                    }
                 }
             }
         }

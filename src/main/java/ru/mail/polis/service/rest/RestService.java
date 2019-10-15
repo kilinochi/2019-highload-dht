@@ -21,6 +21,7 @@ import ru.mail.polis.service.rest.session.StorageSession;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -52,14 +53,6 @@ public final class RestService extends HttpServer implements Service {
         this.executor = executor;
     }
 
-    /**
-     * Get request by this url.
-     */
-    @Path("/v0" + STATUS_PATH)
-    public Response status() {
-        return Response.ok("OK");
-    }
-
     @Override
     public HttpSession createSession(Socket socket) throws RejectedSessionException {
         return new StorageSession(socket, this);
@@ -75,8 +68,12 @@ public final class RestService extends HttpServer implements Service {
             case "/v0" + ENTITIES_PATH:
                 entities(request, session);
                 break;
+            case "/v0" + STATUS_PATH:
+                session.sendResponse(Response.ok("OK"));
+                break;
             default:
-                session.sendError(BAD_REQUEST, "Wrong path");
+                session.sendResponse(new Response(Response.BAD_REQUEST, Response.EMPTY));
+                break;
         }
     }
 
@@ -101,6 +98,7 @@ public final class RestService extends HttpServer implements Service {
                     break;
                 default:
                     session.sendError(METHOD_NOT_ALLOWED, "Wrong method");
+                    break;
             }
         } catch (IOException e) {
             session.sendError(INTERNAL_ERROR, "Something wrong");
@@ -123,10 +121,14 @@ public final class RestService extends HttpServer implements Service {
             end = null;
         }
         try {
-            final Iterator <Record> iterator =
-                    dao.range(
-                            ByteBuffer.wrap(start.getBytes(UTF_8)),
-                            end == null ? null : ByteBuffer.wrap(end.getBytes(UTF_8)));
+            final ByteBuffer startBytes = ByteBuffer.wrap(start.getBytes(Charsets.UTF_8));
+            final ByteBuffer endBytes;
+            if(end == null) {
+                endBytes = null;
+            } else {
+                endBytes = ByteBuffer.wrap(end.getBytes(Charsets.UTF_8));
+            }
+            final Iterator <Record> iterator = dao.range(startBytes, endBytes);
             ((StorageSession) session).stream(iterator);
         } catch (IOException e) {
             session.sendError(INTERNAL_ERROR, "Something wrong");
