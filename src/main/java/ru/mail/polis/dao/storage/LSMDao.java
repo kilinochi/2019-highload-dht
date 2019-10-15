@@ -146,12 +146,6 @@ public final class LSMDao implements DAO {
         }
     }
 
-    @NotNull
-    @Override
-    public Iterator<Record> range(@NotNull ByteBuffer from, @Nullable ByteBuffer to) throws IOException {
-        return null;
-    }
-
     private final class FlusherTask implements Runnable {
         @Override
         public void run() {

@@ -53,7 +53,7 @@ public final class RestService extends HttpServer implements Service {
      */
     @Path("/v0" + STATUS_PATH)
     public Response status() {
-        return new Response(Response.OK, Response.EMPTY);
+        return Response.ok("OK");
     }
 
     @Override
@@ -67,13 +67,12 @@ public final class RestService extends HttpServer implements Service {
         switch (request.getPath()) {
             case "v0/" + ENTITY_PATH:
                 entity(request, session);
-                break;
+                return;
             case "v0/" + ENTITIES_PATH:
                 entities(request, session);
-                break;
+                return;
             default:
                 session.sendError(BAD_REQUEST, "Wrong path");
-                break;
         }
     }
 
@@ -89,16 +88,20 @@ public final class RestService extends HttpServer implements Service {
             switch (request.getMethod()) {
                 case Request.METHOD_GET:
                     executeAsync(session, () -> get(key));
-                    break;
+                    return;
                 case Request.METHOD_DELETE:
-                    executeAsync(session, ()-> delete(key));
-                    break;
+                    executeAsync(session, new Action() {
+                        @Override
+                        public Response act() throws IOException {
+                            return delete(key);
+                        }
+                    });
+                    return;
                 case Request.METHOD_PUT:
                     executeAsync(session, ()-> upsert(key, request.getBody()));
-                    break;
+                    return;
                 default:
                     session.sendError(METHOD_NOT_ALLOWED, "Wrong method");
-                    break;
             }
         } catch (IOException e) {
             session.sendError(INTERNAL_ERROR, "Something wrong");
@@ -161,11 +164,14 @@ public final class RestService extends HttpServer implements Service {
     private void executeAsync(
             @NotNull final HttpSession session,
             @NotNull final Action action) {
-        workers.execute(() -> {
-            try {
-                session.sendResponse(action.act());
-            } catch (IOException e) {
-                e.printStackTrace();
+        workers.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    session.sendResponse(action.act());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
@@ -174,12 +180,12 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final ByteBuffer key,
             @NotNull final byte[] value) throws IOException {
         dao.upsert(key, ByteBuffer.wrap(value));
-        return new Response(CREATED, EMPTY);
+        return new Response(Response.CREATED, EMPTY);
     }
 
     private Response delete(@NotNull final ByteBuffer key) throws IOException {
         dao.remove(key);
-        return new Response(ACCEPTED, EMPTY);
+        return new Response(Response.ACCEPTED, EMPTY);
     }
 
     private Response get(
