@@ -12,6 +12,8 @@ import one.nio.net.Socket;
 import one.nio.server.AcceptorConfig;
 import one.nio.server.RejectedSessionException;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.Service;
@@ -25,6 +27,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static one.nio.http.Response.*;
 
 public final class RestService extends HttpServer implements Service {
@@ -32,9 +35,10 @@ public final class RestService extends HttpServer implements Service {
     private static final String ENTITIES_PATH = "/entities";
     private static final String ENTITY_PATH = "/entity";
     private static final String STATUS_PATH = "/status";
+    private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
     private final DAO dao;
-    private final Executor workers;
+    private final Executor executor;
 
     /**
      * Create rest http-server.
@@ -45,7 +49,7 @@ public final class RestService extends HttpServer implements Service {
     private RestService(final int port, @NotNull final DAO dao, @NotNull final Executor executor) throws IOException {
         super(getConfig(port));
         this.dao = dao;
-        this.workers = executor;
+        this.executor = executor;
     }
 
     /**
@@ -121,8 +125,8 @@ public final class RestService extends HttpServer implements Service {
         try {
             final Iterator <Record> iterator =
                     dao.range(
-                            ByteBuffer.wrap(start.getBytes()),
-                            end == null ? null : ByteBuffer.wrap(end.getBytes()));
+                            ByteBuffer.wrap(start.getBytes(UTF_8)),
+                            end == null ? null : ByteBuffer.wrap(end.getBytes(UTF_8)));
             ((StorageSession) session).stream(iterator);
         } catch (IOException e) {
             session.sendError(INTERNAL_ERROR, "Something wrong");
@@ -157,16 +161,16 @@ public final class RestService extends HttpServer implements Service {
     private void executeAsync(
             @NotNull final HttpSession session,
             @NotNull final Action action)  {
-        workers.execute(() -> {
+        executor.execute(() -> {
             try {
                 session.sendResponse(action.act());
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.info("Error : " + e.getMessage());
             } catch (NoSuchElementException e) {
                 try {
                     session.sendError(NOT_FOUND, "Not found resource");
                 } catch (IOException ex) {
-                    ex.printStackTrace();
+                    logger.info("Error :" + ex.getMessage());
                 }
             }
         });

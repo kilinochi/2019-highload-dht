@@ -6,6 +6,8 @@ import one.nio.http.HttpSession;
 import one.nio.http.Response;
 import one.nio.net.Socket;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.storage.utils.BytesUtils;
 
@@ -16,6 +18,7 @@ import java.util.Iterator;
 
 public final class StorageSession extends HttpSession {
 
+    private static final Logger logger = LoggerFactory.getLogger(StorageSession.class);
     private static final Charset UTF_8 = Charsets.UTF_8;
     private static final byte[] CRLF = "\r\n".getBytes(UTF_8);
     private static final byte[] DELIMITER = "\n".getBytes(UTF_8);
@@ -60,7 +63,7 @@ public final class StorageSession extends HttpSession {
                 try {
                     server.handleRequest(handling, this);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.info("Error" + e.getMessage());
                 }
             }
         }
