@@ -60,8 +60,8 @@ public class RestService extends HttpServer implements Service {
     public void entities(
             @Param("start") final String start,
             @Param("end") final String end,
-            final Request request,
-            final HttpSession session) {
+            @NotNull final Request request,
+            @NotNull final HttpSession session) {
         if (start == null || start.isEmpty()) {
             ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
