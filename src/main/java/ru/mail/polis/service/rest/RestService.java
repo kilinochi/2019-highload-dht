@@ -70,7 +70,7 @@ public class RestService extends HttpServer implements Service {
     }
 
     /**
-     * Rest-endpoint for this uri
+     * Rest-endpoint for this uri.
      */
     @Path("/v0/status")
     public Response status() {
@@ -78,7 +78,7 @@ public class RestService extends HttpServer implements Service {
     }
 
     /**
-     * Rest-endpoint with this uri
+     * Rest-endpoint with this uri.
      * @param start is parameters for uri
      * @param end is parameters for uri
      * @param request is request on this uri
@@ -112,7 +112,7 @@ public class RestService extends HttpServer implements Service {
     }
 
     /**
-     * Rest-endpoint with this uri
+     * Rest-endpoint with this uri.
      * @param id is parameters for uri
      * @param request is request on this uri
      * @param session is current session
