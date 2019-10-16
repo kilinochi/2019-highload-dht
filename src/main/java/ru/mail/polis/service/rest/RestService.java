@@ -28,6 +28,11 @@ public class RestService extends HttpServer implements Service {
 
     private final DAO dao;
 
+    /**
+     * Create new instance of RestService for interaction with database.
+     * @param config in config for server
+     * @param dao is dao for interaction with database
+     */
     private RestService(
             @NotNull final HttpServerConfig config,
             @NotNull final DAO dao) throws IOException {
@@ -35,6 +40,11 @@ public class RestService extends HttpServer implements Service {
         this.dao = dao;
     }
 
+    /**
+     * Build new instance of RestService.
+     * @param port is port on witch Service will be running
+     * @param dao is dao for interaction with database.
+     */
     public static RestService create(
             final int port,
             @NotNull final DAO dao) throws IOException {
@@ -59,11 +69,21 @@ public class RestService extends HttpServer implements Service {
         return new StorageSession(socket, this);
     }
 
+    /**
+     * Rest-endpoint for this uri
+     */
     @Path("/v0/status")
     public Response status() {
         return new Response(Response.OK, Response.EMPTY);
     }
 
+    /**
+     * Rest-endpoint with this uri
+     * @param start is parameters for uri
+     * @param end is parameters for uri
+     * @param request is request on this uri
+     * @param session is current session
+     */
     @Path("/v0/entities")
     public void entities(
             @Param("start") final String start,
@@ -91,6 +111,12 @@ public class RestService extends HttpServer implements Service {
         }
     }
 
+    /**
+     * Rest-endpoint with this uri
+     * @param id is parameters for uri
+     * @param request is request on this uri
+     * @param session is current session
+     */
     @Path("/v0/entity")
     public void entity(
             @Param("id") final String id,

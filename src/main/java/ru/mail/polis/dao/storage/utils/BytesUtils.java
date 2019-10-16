@@ -30,6 +30,10 @@ public final class BytesUtils {
         return result;
     }
 
+    /**
+     * Transform ByteBuffer to array of bytes.
+     * @param buffer is ByteBuffer which will be transform
+     */
     public static byte[] toArray(@NotNull final ByteBuffer buffer) {
         final ByteBuffer copy = buffer.duplicate();
         final byte[] array = new byte[copy.remaining()];

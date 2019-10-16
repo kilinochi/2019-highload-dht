@@ -2,7 +2,6 @@ package ru.mail.polis.dao.storage;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
