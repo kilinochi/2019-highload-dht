@@ -1,19 +1,27 @@
 package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
-import one.nio.http.*;
+import one.nio.http.HttpServer;
+import one.nio.http.HttpServerConfig;
+import one.nio.http.Path;
+import one.nio.http.Response;
+import one.nio.http.Request;
+import one.nio.http.Param;
+import one.nio.http.HttpSession;
 import one.nio.net.Socket;
 import one.nio.server.AcceptorConfig;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.NoSuchElementException;
 
 public class RestService extends HttpServer implements Service {
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
@@ -75,9 +83,9 @@ public class RestService extends HttpServer implements Service {
             return;
         }
         try {
-            final var range = dao.range(ByteBuffer.wrap(start.getBytes(Charsets.UTF_8)),
+            final Iterator<Record> recordIterator = dao.range(ByteBuffer.wrap(start.getBytes(Charsets.UTF_8)),
                     end == null ? null : ByteBuffer.wrap(end.getBytes(Charsets.UTF_8)));
-            ((StorageSession) session).stream(range);
+            ((StorageSession) session).stream(recordIterator);
         } catch (IOException e) {
             logger.error("Something wrong while get range of value", e.getMessage());
         }

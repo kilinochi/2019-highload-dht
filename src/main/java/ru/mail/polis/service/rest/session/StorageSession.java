@@ -26,10 +26,15 @@ public final class StorageSession extends HttpSession {
 
     private Iterator<Record> data;
 
-    public StorageSession(Socket socket, HttpServer server) {
+    public StorageSession(@NotNull final Socket socket, @NotNull final HttpServer server) {
         super(socket, server);
     }
 
+
+    /**
+     * Range streaming data as Iterator to socket.
+     * @param records is iterator as data for stream.
+     */
     public void stream(@NotNull final Iterator <Record> records) throws IOException {
         this.data = records;
         final Response response = new Response(Response.OK);
