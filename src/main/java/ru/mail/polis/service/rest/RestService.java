@@ -61,7 +61,7 @@ public class RestService extends HttpServer implements Service {
     public void handleDefault(
             @NotNull final Request request,
             @NotNull final HttpSession session) {
-        sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+        ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
     }
 
     @Override
@@ -91,15 +91,15 @@ public class RestService extends HttpServer implements Service {
             @NotNull final Request request,
             @NotNull final HttpSession session) {
         if (start == null || start.isEmpty()) {
-            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
         if (end != null && end.isEmpty()) {
-            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
         if (request.getMethod() != Request.METHOD_GET) {
-            sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
+            ResponseUtils.sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
             return;
         }
         try {
@@ -123,7 +123,7 @@ public class RestService extends HttpServer implements Service {
             final Request request,
             final HttpSession session) {
         if (id == null || id.isEmpty()) {
-            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
@@ -139,7 +139,7 @@ public class RestService extends HttpServer implements Service {
                 break;
             default:
                 logger.warn("Not supported HTTP-method: " + request.getMethod());
-                sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
+                ResponseUtils.sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
                 break;
         }
     }
@@ -149,7 +149,7 @@ public class RestService extends HttpServer implements Service {
             @NotNull final ResponsePublisher publisher) {
         asyncExecute(() -> {
             try {
-                sendResponse(session, publisher.submit());
+                ResponseUtils.sendResponse(session, publisher.submit());
             } catch (IOException e) {
                 logger.error("Unable to create response", e);
             } catch (NoSuchElementException e) {
@@ -189,15 +189,19 @@ public class RestService extends HttpServer implements Service {
         Response submit() throws IOException;
     }
 
-    private void sendResponse(@NotNull final HttpSession session,
-                                    @NotNull final Response response) {
-        try {
-            session.sendResponse(response);
-        } catch (IOException e) {
+    private static final class ResponseUtils {
+        private ResponseUtils(){}
+
+        private static void sendResponse(@NotNull final HttpSession session,
+                                  @NotNull final Response response) {
             try {
-                session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-            } catch (IOException ex) {
-                logger.error("Error while send error");
+                session.sendResponse(response);
+            } catch (IOException e) {
+                try {
+                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                } catch (IOException ex) {
+                    logger.error("Error while send error");
+                }
             }
         }
     }
