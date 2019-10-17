@@ -20,6 +20,7 @@ import java.util.NoSuchElementException;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.dao.storage.utils.ResponseUtils;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 
@@ -162,7 +163,6 @@ public class RestService extends HttpServer implements Service {
         });
     }
 
-
     private Response upsert(
             @NotNull final ByteBuffer key,
             @NotNull final byte[] value) throws IOException {
@@ -188,22 +188,5 @@ public class RestService extends HttpServer implements Service {
     @FunctionalInterface
     private interface ResponsePublisher {
         Response submit() throws IOException;
-    }
-
-    private static final class ResponseUtils {
-        private ResponseUtils() {}
-
-        private static void sendResponse(@NotNull final HttpSession session,
-                                         @NotNull final Response response) {
-            try {
-                session.sendResponse(response);
-            } catch (IOException e) {
-                try {
-                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ex) {
-                    logger.error("Error while send error");
-                }
-            }
-        }
     }
 }
