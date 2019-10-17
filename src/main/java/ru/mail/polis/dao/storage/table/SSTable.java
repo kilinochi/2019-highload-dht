@@ -201,7 +201,7 @@ public final class SSTable implements Table {
         final int keySize = clusters.getInt((int) offset);
         offset += Integer.BYTES;
         final ByteBuffer key = clusters.duplicate();
-        key.position((int) (offset));
+        key.position((int) offset);
         key.limit(key.position() + keySize);
         offset += keySize;
 

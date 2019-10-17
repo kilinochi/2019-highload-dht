@@ -65,8 +65,8 @@ public final class MemoryTablePool implements Table, Closeable {
     @NotNull
     @Override
     public Iterator<Cluster> iterator(final @NotNull ByteBuffer from) {
-        lock.readLock().lock();
         final Collection<Iterator<Cluster>> iterators;
+        lock.readLock().lock();
         try {
             iterators = new ArrayList<>(pendingToFlushTables.size() + 1);
             iterators.add(currentMemoryTable.iterator(from));
@@ -153,8 +153,8 @@ public final class MemoryTablePool implements Table, Closeable {
      * @param sstable is all tables from disk storage
      */
     public void compact(@NotNull final NavigableMap<Long, Table> sstable) {
-        lock.readLock().lock();
         final Iterator<Cluster> data;
+        lock.readLock().lock();
         try {
             data = IteratorUtils.data(currentMemoryTable, sstable, LSMDao.EMPTY_BUFFER);
         } finally {
@@ -164,8 +164,8 @@ public final class MemoryTablePool implements Table, Closeable {
     }
 
     private void compaction(@NotNull final Iterator<Cluster> data) {
-        lock.writeLock().lock();
         final FlushTable table;
+        lock.writeLock().lock();
         try {
             table = new FlushTable(generation, data, true);
             generation = generation + 1;
@@ -182,8 +182,8 @@ public final class MemoryTablePool implements Table, Closeable {
 
     private void enqueueFlush() {
         if(currentMemoryTable.size() > flushLimit) {
-            lock.writeLock().lock();
             FlushTable flushTable = null;
+            lock.writeLock().lock();
             try {
                 if (currentMemoryTable.size() > flushLimit) {
                     flushTable = new FlushTable(generation,
@@ -211,8 +211,8 @@ public final class MemoryTablePool implements Table, Closeable {
         if (!stop.compareAndSet(false, true)) {
             return;
         }
-        lock.writeLock().lock();
         FlushTable flushTable;
+        lock.writeLock().lock();
         try {
             flushTable = new FlushTable(generation, currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER), true, false);
         } finally {
