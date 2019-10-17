@@ -12,8 +12,7 @@ public final class ResponseUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(ResponseUtils.class);
 
-    private ResponseUtils() {
-    }
+    private ResponseUtils() {}
 
     /**
     * Util method to send response.
