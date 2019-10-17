@@ -10,7 +10,7 @@ public final class NoSuchElementExceptionLite extends NoSuchElementException {
      * @param mess is cause message
      */
     public NoSuchElementExceptionLite(final String mess) {
-        super();
+        super(mess);
     }
 
     @Override
