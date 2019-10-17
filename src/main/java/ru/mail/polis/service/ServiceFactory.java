@@ -52,6 +52,6 @@ public final class ServiceFactory {
         if (port <= 0 || 65536 <= port) {
             throw new IllegalArgumentException("Port out of range");
         }
-        return new RestService(port, dao);
+        return RestService.create(port, dao);
     }
 }

@@ -1,102 +1,208 @@
 package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
-import one.nio.http.HttpSession;
-import one.nio.http.HttpServerConfig;
 import one.nio.http.HttpServer;
-import one.nio.http.Param;
+import one.nio.http.HttpServerConfig;
 import one.nio.http.Path;
 import one.nio.http.Response;
 import one.nio.http.Request;
+import one.nio.http.Param;
+import one.nio.http.HttpSession;
+import one.nio.net.Socket;
 import one.nio.server.AcceptorConfig;
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.dao.DAO;
-import ru.mail.polis.service.Service;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-public final class RestService extends HttpServer implements Service {
+import ru.mail.polis.Record;
+import ru.mail.polis.dao.DAO;
+import ru.mail.polis.service.Service;
+import ru.mail.polis.service.rest.session.StorageSession;
 
-    private static final String ENTITY_PATH = "/entity";
-    private static final String STATUS_PATH = "/status";
+public class RestService extends HttpServer implements Service {
+    private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
     private final DAO dao;
 
     /**
-     * Create rest http-server.
-     *
-     * @param port is the port which server can be work
-     * @param dao  is persistent dao
+     * Create new instance of RestService for interaction with database.
+     * @param config in config for server
+     * @param dao is dao for interaction with database
      */
-    public RestService(final int port, @NotNull final DAO dao) throws IOException {
-        super(getConfig(port));
+    private RestService(
+            @NotNull final HttpServerConfig config,
+            @NotNull final DAO dao) throws IOException {
+        super(config);
         this.dao = dao;
     }
 
     /**
-     * Get request by this url.
+     * Build new instance of RestService.
+     * @param port is port on witch Service will be running
+     * @param dao is dao for interaction with database.
      */
-    @Path("/v0" + STATUS_PATH)
+    public static RestService create(
+            final int port,
+            @NotNull final DAO dao) throws IOException {
+        final AcceptorConfig acceptorConfig = new AcceptorConfig();
+        acceptorConfig.port = port;
+        final HttpServerConfig httpServerConfig = new HttpServerConfig();
+        httpServerConfig.acceptors = new AcceptorConfig[]{acceptorConfig};
+        httpServerConfig.minWorkers = Runtime.getRuntime().availableProcessors();
+        httpServerConfig.maxWorkers = Runtime.getRuntime().availableProcessors();
+        return new RestService(httpServerConfig, dao);
+    }
+
+    @Override
+    public void handleDefault(
+            @NotNull final Request request,
+            @NotNull final HttpSession session) {
+        ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+    }
+
+    @Override
+    public HttpSession createSession(@NotNull final Socket socket) {
+        return new StorageSession(socket, this);
+    }
+
+    /**
+     * Rest-endpoint for this uri.
+     */
+    @Path("/v0/status")
     public Response status() {
         return new Response(Response.OK, Response.EMPTY);
     }
 
     /**
-     * Get request by this url.
-     *
-     * @param id      is key by which
-     * @param request is request method which client send to server
+     * Rest-endpoint with this uri.
+     * @param start is parameters for uri
+     * @param end is parameters for uri
+     * @param request is request on this uri
+     * @param session is current session
      */
-    @Path("/v0" + ENTITY_PATH)
-    public Response entity(@Param("id") final String id, final Request request) {
+    @Path("/v0/entities")
+    public void entities(
+            @Param("start") final String start,
+            @Param("end") final String end,
+            @NotNull final Request request,
+            @NotNull final HttpSession session) {
+        if (start == null || start.isEmpty()) {
+            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            return;
+        }
+        if (end != null && end.isEmpty()) {
+            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            return;
+        }
+        if (request.getMethod() != Request.METHOD_GET) {
+            ResponseUtils.sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
+            return;
+        }
+        try {
+            final Iterator<Record> recordIterator = dao.range(ByteBuffer.wrap(start.getBytes(Charsets.UTF_8)),
+                    end == null ? null : ByteBuffer.wrap(end.getBytes(Charsets.UTF_8)));
+            ((StorageSession) session).stream(recordIterator);
+        } catch (IOException e) {
+            logger.error("Something wrong while get range of value", e.getMessage());
+        }
+    }
+
+    /**
+     * Rest-endpoint with this uri.
+     * @param id is parameters for uri
+     * @param request is request on this uri
+     * @param session is current session
+     */
+    @Path("/v0/entity")
+    public void entity(
+            @Param("id") final String id,
+            final Request request,
+            final HttpSession session) {
         if (id == null || id.isEmpty()) {
-            return new Response(Response.BAD_REQUEST, "Key not found".getBytes(Charsets.UTF_8));
+            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            return;
         }
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
-        return createResponse(request, key);
+        switch (request.getMethod()) {
+            case Request.METHOD_GET:
+                asyncExecute(session, () -> get(key));
+                break;
+            case Request.METHOD_PUT:
+                asyncExecute(session, () -> upsert(key, request.getBody()));
+                break;
+            case Request.METHOD_DELETE:
+                asyncExecute(session, () -> delete(key));
+                break;
+            default:
+                logger.warn("Not supported HTTP-method: " + request.getMethod());
+                ResponseUtils.sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
+                break;
+        }
     }
 
-    private Response createResponse(@NotNull final Request request, @NotNull final ByteBuffer key) {
-        try {
-            final int method = request.getMethod();
-            switch (method) {
-                case Request.METHOD_GET:
-                    final ByteBuffer value = dao.get(key);
-                    final ByteBuffer duplicate = value.duplicate();
-                    final byte[] body = new byte[duplicate.remaining()];
-                    duplicate.get(body);
-                    return new Response(Response.OK, body);
-                case Request.METHOD_PUT:
-                    dao.upsert(key, ByteBuffer.wrap(request.getBody()));
-                    return new Response(Response.CREATED, Response.EMPTY);
-                case Request.METHOD_DELETE:
-                    dao.remove(key);
-                    return new Response(Response.ACCEPTED, Response.EMPTY);
-                default:
-                    return new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY);
+    private void asyncExecute(
+            @NotNull final HttpSession session,
+            @NotNull final ResponsePublisher publisher) {
+        asyncExecute(() -> {
+            try {
+                ResponseUtils.sendResponse(session, publisher.submit());
+            } catch (IOException e) {
+                logger.error("Unable to create response", e);
+            } catch (NoSuchElementException e) {
+                try {
+                    session.sendError(Response.NOT_FOUND, "Not found recourse!");
+                } catch (IOException ex) {
+                    logger.error("Error while send error");
+                }
             }
-        } catch (IOException e) {
-            return new Response(Response.INTERNAL_ERROR, Response.EMPTY);
-        } catch (NoSuchElementException e) {
-            return new Response(Response.NOT_FOUND, "Key not found".getBytes(Charsets.UTF_8));
-        }
+        });
     }
 
-    private static HttpServerConfig getConfig(final int port) {
-        if (port <= 1024 || port >= 65536) {
-            throw new IllegalArgumentException("Invalid port");
-        }
-        final AcceptorConfig acceptorConfig = new AcceptorConfig();
-        acceptorConfig.port = port;
-        final HttpServerConfig config = new HttpServerConfig();
-        config.acceptors = new AcceptorConfig[]{acceptorConfig};
-        return config;
+    private Response upsert(
+            @NotNull final ByteBuffer key,
+            @NotNull final byte[] value) throws IOException {
+        dao.upsert(key, ByteBuffer.wrap(value));
+        return new Response(Response.CREATED, Response.EMPTY);
     }
 
-    @Override
-    public void handleDefault(final Request request, final HttpSession session) throws IOException {
-        session.sendResponse(new Response(Response.BAD_REQUEST, Response.EMPTY));
+    private Response delete(
+            @NotNull final ByteBuffer key) throws IOException {
+        dao.remove(key);
+        return new Response(Response.ACCEPTED, Response.EMPTY);
+    }
+
+    private Response get(
+            @NotNull final ByteBuffer key) throws IOException, NoSuchElementException {
+        final ByteBuffer value = dao.get(key);
+        final ByteBuffer duplicate = value.duplicate();
+        final byte[] body = new byte[duplicate.remaining()];
+        duplicate.get(body);
+        return new Response(Response.OK, body);
+    }
+
+    @FunctionalInterface
+    private interface ResponsePublisher {
+        Response submit() throws IOException;
+    }
+
+    private static final class ResponseUtils {
+        private ResponseUtils(){}
+
+        private static void sendResponse(@NotNull final HttpSession session,
+                                  @NotNull final Response response) {
+            try {
+                session.sendResponse(response);
+            } catch (IOException e) {
+                try {
+                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                } catch (IOException ex) {
+                    logger.error("Error while send error");
+                }
+            }
+        }
     }
 }

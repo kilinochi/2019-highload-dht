@@ -2,6 +2,8 @@ package ru.mail.polis.dao.storage;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cluster.Cluster;
@@ -36,6 +38,7 @@ public final class LSMDao implements DAO {
     private static final String SUFFIX_DAT = ".dat";
     private static final String FILE_NAME = "SSTable_";
     private static final Pattern FILE_NAME_PATTERN = Pattern.compile(FILE_NAME);
+    private static final Logger logger = LoggerFactory.getLogger(LSMDao.class);
 
     private final File directory;
     private final MemoryTablePool memoryTablePool;
@@ -170,7 +173,7 @@ public final class LSMDao implements DAO {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.info("IOError: " + e.getMessage());
                 }
             }
         }
