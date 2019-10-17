@@ -2,6 +2,7 @@ package ru.mail.polis.dao.storage.exception;
 
 import java.util.NoSuchElementException;
 
+@SuppressWarnings("serial")
 public final class NoSuchElementExceptionLite extends NoSuchElementException {
 
     /**
