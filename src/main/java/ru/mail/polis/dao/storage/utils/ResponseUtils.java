@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class ResponseUtils {
+public final class ResponseUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(ResponseUtils.class);
 
