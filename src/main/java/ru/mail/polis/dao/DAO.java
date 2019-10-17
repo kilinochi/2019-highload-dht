@@ -19,7 +19,6 @@ package ru.mail.polis.dao;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.mail.polis.Record;
-import ru.mail.polis.dao.storage.exception.NoSuchElementExceptionLite;
 
 import java.io.Closeable;
 import java.io.IOException;
