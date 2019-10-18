@@ -193,7 +193,7 @@ public class RestService extends HttpServer implements Service {
         private ResponseUtils(){}
 
         private static void sendResponse(@NotNull final HttpSession session,
-                                  @NotNull final Response response) {
+                                         @NotNull final Response response) {
             try {
                 session.sendResponse(response);
             } catch (IOException e) {
