@@ -38,8 +38,7 @@ public final class MemoryTablePool implements Table, Closeable {
      *
      * @param flushLimit      is the limit above which we flushing mem table
      * @param startGeneration is the start of generation
-     **/
-
+     */
     public MemoryTablePool(final long flushLimit, final long startGeneration) {
         this.flushLimit = flushLimit;
         this.generation = startGeneration;
