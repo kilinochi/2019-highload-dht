@@ -28,6 +28,8 @@ import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,6 +45,7 @@ public final class LSMDao implements DAO {
     private final File directory;
     private final MemoryTablePool memoryTablePool;
     private final Thread flushedThread;
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     private NavigableMap<Long, Table> ssTables;
 
@@ -91,24 +94,34 @@ public final class LSMDao implements DAO {
     }
 
     private void compactDir(final long preGener) throws IOException {
-        ssTables = new ConcurrentSkipListMap<>();
-        Files.walkFileTree(directory.toPath(), EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs)
-                    throws IOException {
-                final File file = path.toFile();
-                final Matcher matcher = FILE_NAME_PATTERN.matcher(file.getName());
-                if (file.getName().endsWith(SUFFIX_DAT) && matcher.find()) {
-                    final long currentGeneration = GenerationUtils.fromPath(path);
-                    if (currentGeneration >= preGener) {
-                        ssTables.put(currentGeneration, new SSTable(file, currentGeneration));
-                        return FileVisitResult.CONTINUE;
+        lock.writeLock().lock();
+        try {
+            ssTables = new ConcurrentSkipListMap<>();
+        } finally {
+            lock.writeLock().unlock();
+        }
+        lock.writeLock().lock();
+        try {
+            Files.walkFileTree(directory.toPath(), EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs)
+                        throws IOException {
+                    final File file = path.toFile();
+                    final Matcher matcher = FILE_NAME_PATTERN.matcher(file.getName());
+                    if (file.getName().endsWith(SUFFIX_DAT) && matcher.find()) {
+                        final long currentGeneration = GenerationUtils.fromPath(path);
+                        if (currentGeneration >= preGener) {
+                            ssTables.put(currentGeneration, new SSTable(file, currentGeneration));
+                            return FileVisitResult.CONTINUE;
+                        }
                     }
+                    Files.delete(path);
+                    return FileVisitResult.CONTINUE;
                 }
-                Files.delete(path);
-                return FileVisitResult.CONTINUE;
-            }
-        });
+            });
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     @Override
