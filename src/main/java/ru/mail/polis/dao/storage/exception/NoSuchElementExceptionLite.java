@@ -5,9 +5,10 @@ import org.jetbrains.annotations.NotNull;
 import java.util.NoSuchElementException;
 
 @SuppressWarnings("serial")
-public class NoSuchElementExceptionLite extends NoSuchElementException {
+public final class NoSuchElementExceptionLite extends NoSuchElementException {
 
-    /** Custom lite extends NoSuchElement.
+    /** Custom lite exception extends NoSuchElementException.
+     *
      * @param mess message with problem cause
      */
     public NoSuchElementExceptionLite(@NotNull final String mess) {
