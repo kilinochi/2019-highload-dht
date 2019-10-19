@@ -107,7 +107,7 @@ public class RestService extends HttpServer implements Service {
                     end == null ? null : ByteBuffer.wrap(end.getBytes(Charsets.UTF_8)));
             ((StorageSession) session).stream(recordIterator);
         } catch (IOException e) {
-            logger.error("Something wrong while get range of value", e.getMessage());
+            logger.error("Something wrong while get range of value " + e.getMessage());
         }
     }
 
