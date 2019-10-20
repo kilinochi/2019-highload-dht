@@ -174,8 +174,8 @@ public final class RestService extends HttpServer implements Service {
                 logger.error("Unable to create response", e);
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ioexecption) {
-                    logger.error("Error while send response " + ioexecption.getMessage());
+                } catch (IOException ioExecption) {
+                    logger.error("Error while send response " + ioExecption.getMessage());
                 }
             } catch (NoSuchElementException e) {
                 try {
