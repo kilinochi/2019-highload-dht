@@ -27,7 +27,7 @@ public final class IteratorUtils {
     public static Iterator<Cluster> data(@NotNull final Table table,
                                          @NotNull final NavigableMap <Long, SSTable> tables,
                                          @NotNull final ByteBuffer from) {
-        final List <Iterator<Cluster>> list = compose(table, tables, from);
+        final List<Iterator<Cluster>> list = compose(table, tables, from);
         final Iterator<Cluster> clusterIterator = collapseEquals(list);
         return filter(clusterIterator);
     }
@@ -38,11 +38,11 @@ public final class IteratorUtils {
      * @param ssTables is other ssTables from witch we should be get Iterators by key
      * @param from is key from witch we should be get data
      * */
-    private static List <Iterator<Cluster>> compose(
+    private static List<Iterator<Cluster>> compose(
             @NotNull final Table table,
             @NotNull final NavigableMap<Long, SSTable> ssTables,
             @NotNull final ByteBuffer from){
-        final List <Iterator<Cluster>> list = new ArrayList<>();
+        final List<Iterator<Cluster>> list = new ArrayList<>();
         for (final Table fromOther : ssTables.values()) {
             list.add(fromOther.iterator(from));
         }

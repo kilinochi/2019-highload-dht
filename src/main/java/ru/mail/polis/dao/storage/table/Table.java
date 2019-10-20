@@ -10,7 +10,7 @@ public interface Table {
     long size();
 
     @NotNull
-    Iterator <Cluster> iterator(@NotNull final ByteBuffer from);
+    Iterator<Cluster> iterator(@NotNull final ByteBuffer from);
 
     void upsert(@NotNull ByteBuffer key, @NotNull ByteBuffer value);
 

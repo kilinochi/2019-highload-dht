@@ -41,7 +41,7 @@ public final class StorageSession extends HttpSession {
      * Range streaming data as Iterator to socket.
      * @param records is iterator as data for stream.
      */
-    public void stream(@NotNull final Iterator <Record> records) throws IOException {
+    public void stream(@NotNull final Iterator<Record> records) throws IOException {
         this.data = records;
         final Response response = new Response(Response.OK);
         response.addHeader("Transfer-Encoding: chunked");
