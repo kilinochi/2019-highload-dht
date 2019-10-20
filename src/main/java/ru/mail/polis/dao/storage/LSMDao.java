@@ -46,8 +46,9 @@ public final class LSMDao implements DAO {
     private final File directory;
     private final MemoryTablePool memoryTablePool;
     private final Thread flushedThread;
-    private final long generation;
     private final NavigableMap<Long, SSTable> ssTables;
+
+    private long generation;
 
     /**
      * Creates persistence Dao based on LSMTree.
@@ -124,6 +125,7 @@ public final class LSMDao implements DAO {
         if (data.hasNext()) {
             final File sstable = new File(directory, FILE_NAME + currentGeneration + SUFFIX_DAT);
             SSTable.writeToFile(data, sstable);
+            this.generation = memoryTablePool.generation();
         }
     }
 

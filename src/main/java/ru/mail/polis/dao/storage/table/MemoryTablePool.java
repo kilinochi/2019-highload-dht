@@ -152,21 +152,21 @@ public final class MemoryTablePool implements Table, Closeable {
     /**
      * Compact values from all tables with current table.
      *
-     * @param sstable is all tables from disk storage
+     * @param sstables is all tables from disk storage
      * @param directory is current directory for flush
      * @param generation is generation for new SSTable
      */
-    public void compact(@NotNull final NavigableMap<Long, SSTable> sstable,
+    public void compact(@NotNull final NavigableMap<Long, SSTable> sstables,
                         @NotNull final File directory,
                         final long generation) throws IOException {
         final Iterator<Cluster> data;
         lock.readLock().lock();
         try {
-            data = IteratorUtils.data(currentMemoryTable, sstable, LSMDao.EMPTY_BUFFER);
+            data = IteratorUtils.data(currentMemoryTable, sstables, LSMDao.EMPTY_BUFFER);
         } finally {
             lock.readLock().unlock();
         }
-        compaction(data, directory, sstable ,generation);
+        compaction(data, directory, sstables ,generation);
     }
 
     private void compaction(@NotNull final Iterator<Cluster> data,
@@ -174,9 +174,9 @@ public final class MemoryTablePool implements Table, Closeable {
                             @NotNull final NavigableMap<Long, SSTable> ssTables,
                             final long generation) throws IOException {
         final File ssTableFileTmp = new File(directory, LSMDao.FILE_NAME + generation + LSMDao.SUFFIX_TMP);
-        SSTable.writeToFile(data, ssTableFileTmp);
         lock.writeLock().lock();
         try {
+            SSTable.writeToFile(data, ssTableFileTmp);
             for(final SSTable ssTable : ssTables.descendingMap().values()) {
                 Files.delete(ssTable.getTable().toPath());
             }
