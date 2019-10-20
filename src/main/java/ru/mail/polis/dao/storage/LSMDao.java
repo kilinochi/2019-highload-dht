@@ -1,7 +1,6 @@
 package ru.mail.polis.dao.storage;
 
 import com.google.common.collect.Iterators;
-import javafx.concurrent.ScheduledService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
