@@ -4,8 +4,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.NoSuchElementException;
 
-@SuppressWarnings("serial")
 public final class NoSuchElementExceptionLite extends NoSuchElementException {
+
+    private static final long serialVersionUID = 1L;
 
     /** Custom lite exception extends NoSuchElementException.
      *
