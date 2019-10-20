@@ -22,6 +22,9 @@ import java.util.Set;
 import org.jetbrains.annotations.NotNull;
 
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.service.rest.RestService;
+import ru.mail.polis.service.topology.BasicTopology;
+import ru.mail.polis.service.topology.Topology;
 
 /**
  * Constructs {@link Service} instances.
@@ -52,10 +55,13 @@ public final class ServiceFactory {
             throw new IllegalStateException("The heap is too big. Consider setting Xmx.");
         }
 
-        if (port <= 0 || 65536 <= port) {
+        if (port <= 1024 || 65536 <= port) {
             throw new IllegalArgumentException("Port out of range");
         }
 
-        throw new IllegalStateException();
+        final Topology<String> nodes =
+                new BasicTopology(topology,
+                        "http://localhost:" + port);
+        return RestService.create(port, dao, nodes);
     }
 }

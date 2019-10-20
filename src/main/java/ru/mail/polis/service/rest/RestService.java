@@ -1,60 +1,75 @@
 package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
-import one.nio.http.HttpServer;
-import one.nio.http.HttpServerConfig;
-import one.nio.http.Path;
-import one.nio.http.Response;
-import one.nio.http.Request;
-import one.nio.http.Param;
-import one.nio.http.HttpSession;
+import one.nio.http.*;
+import one.nio.net.ConnectionString;
 import one.nio.net.Socket;
+import one.nio.pool.PoolException;
 import one.nio.server.AcceptorConfig;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Map;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
+import ru.mail.polis.service.topology.Topology;
 
 public class RestService extends HttpServer implements Service {
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
+    private final Topology<String> nodes;
     private final DAO dao;
+    private final Map<String, HttpClient> pool;
 
     /**
      * Create new instance of RestService for interaction with database.
      * @param config in config for server
      * @param dao is dao for interaction with database
+     * @param nodes
      */
     private RestService(
             @NotNull final HttpServerConfig config,
-            @NotNull final DAO dao) throws IOException {
+            @NotNull final DAO dao,
+            @NotNull final Topology<String> nodes) throws IOException {
         super(config);
         this.dao = dao;
+
+        this.nodes = nodes;
+        this.pool = new HashMap<>();
+        for(final String node : this.nodes.all()) {
+            if(nodes.isMe(node)) {
+                continue;
+            }
+            assert !pool.containsKey(node);
+            pool.put(node, new HttpClient(new ConnectionString(node + "?timeout=100")));
+        }
     }
 
     /**
      * Build new instance of RestService.
      * @param port is port on witch Service will be running
-     * @param dao is dao for interaction with database.
+     * @param dao is dao for interaction with database
+     * @param nodes
      */
     public static RestService create(
             final int port,
-            @NotNull final DAO dao) throws IOException {
+            @NotNull final DAO dao,
+            @NotNull Topology<String> nodes) throws IOException {
         final AcceptorConfig acceptorConfig = new AcceptorConfig();
         acceptorConfig.port = port;
         final HttpServerConfig httpServerConfig = new HttpServerConfig();
         httpServerConfig.acceptors = new AcceptorConfig[]{acceptorConfig};
         httpServerConfig.minWorkers = Runtime.getRuntime().availableProcessors();
         httpServerConfig.maxWorkers = Runtime.getRuntime().availableProcessors();
-        return new RestService(httpServerConfig, dao);
+        return new RestService(httpServerConfig, dao, nodes);
     }
 
     @Override
@@ -127,6 +142,10 @@ public class RestService extends HttpServer implements Service {
             return;
         }
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
+        final String primary = nodes.primaryFor(key);
+        if(!nodes.isMe(primary)) {
+            asyncExecute(session, () -> proxy(primary, request));
+        }
         switch (request.getMethod()) {
             case Request.METHOD_GET:
                 asyncExecute(session, () -> get(key));
@@ -160,6 +179,17 @@ public class RestService extends HttpServer implements Service {
                 }
             }
         });
+    }
+
+    private Response proxy(
+            @NotNull final String node,
+            @NotNull final Request request) throws IOException {
+        assert !nodes.isMe(node);
+        try {
+            return pool.get(node).invoke(request);
+        } catch (InterruptedException | PoolException | HttpException e) {
+            throw new IOException("Can not proxy, " + e.getMessage());
+        }
     }
 
     private Response upsert(
@@ -200,7 +230,7 @@ public class RestService extends HttpServer implements Service {
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
                 } catch (IOException ex) {
-                    logger.error("Error while send error");
+                    logger.error("Error while send error : " + ex.getMessage());
                 }
             }
         }

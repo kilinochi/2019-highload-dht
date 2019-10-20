@@ -97,11 +97,6 @@ public final class LSMDao implements DAO {
         lock.writeLock().lock();
         try {
             ssTables = new ConcurrentSkipListMap<>();
-        } finally {
-            lock.writeLock().unlock();
-        }
-        lock.writeLock().lock();
-        try {
             Files.walkFileTree(directory.toPath(), EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs)
