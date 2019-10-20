@@ -8,22 +8,15 @@ public final class FlushTable {
     private final long generation;
     private final Iterator<Cluster> data;
     private final boolean poisonPills;
-    private final boolean compactionTable;
 
     FlushTable(final long generation,
                final Iterator<Cluster> data,
-               final boolean poisonPills,
-               final boolean compactionTable) {
+               final boolean poisonPills) {
         this.generation = generation;
         this.data = data;
         this.poisonPills = poisonPills;
-        this.compactionTable = compactionTable;
     }
-
-    FlushTable(final long generation, final Iterator<Cluster> data, final boolean compactionTable) {
-        this(generation, data, false, compactionTable);
-    }
-
+    
     public long getGeneration() {
         return generation;
     }
@@ -34,9 +27,5 @@ public final class FlushTable {
 
     public boolean isPoisonPills() {
         return poisonPills;
-    }
-
-    public boolean isCompactionTable() {
-        return compactionTable;
     }
 }

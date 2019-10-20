@@ -8,8 +8,11 @@ import ru.mail.polis.dao.storage.cluster.Cluster;
 import ru.mail.polis.dao.storage.utils.IteratorUtils;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.Iterator;
@@ -151,7 +154,9 @@ public final class MemoryTablePool implements Table, Closeable {
      *
      * @param sstable is all tables from disk storage
      */
-    public void compact(@NotNull final NavigableMap<Long, Table> sstable) {
+    public void compact(@NotNull final NavigableMap<Long, SSTable> sstable,
+                        @NotNull final File directory,
+                        final long generation) throws IOException {
         final Iterator<Cluster> data;
         lock.readLock().lock();
         try {
@@ -159,23 +164,26 @@ public final class MemoryTablePool implements Table, Closeable {
         } finally {
             lock.readLock().unlock();
         }
-        compaction(data);
+        compaction(data, directory, sstable ,generation);
     }
 
-    private void compaction(@NotNull final Iterator<Cluster> data) {
-        final FlushTable table;
+    private void compaction(@NotNull final Iterator<Cluster> data,
+                            @NotNull final File directory,
+                            @NotNull final NavigableMap<Long, SSTable> ssTables,
+                            final long generation) throws IOException {
+        final File ssTableFileTmp = new File(directory, LSMDao.FILE_NAME + generation + LSMDao.SUFFIX_TMP);
+        SSTable.writeToFile(data, ssTableFileTmp);
         lock.writeLock().lock();
         try {
-            table = new FlushTable(generation, data, true);
-            generation = generation + 1;
-            currentMemoryTable = new MemTable(generation);
+            for(final SSTable ssTable : ssTables.descendingMap().values()) {
+                Files.delete(ssTable.getTable().toPath());
+            }
+            ssTables.clear();
+            final File ssTableFile = new File(directory, LSMDao.FILE_NAME + generation + LSMDao.SUFFIX_DAT);
+            Files.move(ssTableFileTmp.toPath(), ssTableFile.toPath(), StandardCopyOption.ATOMIC_MOVE);
+            ssTables.put(generation, new SSTable(ssTableFile, generation));
         } finally {
             lock.writeLock().unlock();
-        }
-        try {
-            flushingQueue.put(table);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
         }
     }
 
@@ -213,7 +221,7 @@ public final class MemoryTablePool implements Table, Closeable {
         FlushTable flushTable;
         lock.writeLock().lock();
         try {
-            flushTable = new FlushTable(generation, currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER), true, false);
+            flushTable = new FlushTable(generation, currentMemoryTable.iterator(LSMDao.EMPTY_BUFFER), true);
         } finally {
             lock.writeLock().unlock();
         }

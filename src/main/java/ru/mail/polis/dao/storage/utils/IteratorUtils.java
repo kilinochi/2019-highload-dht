@@ -4,6 +4,7 @@ import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.table.Table;
 
 import java.nio.ByteBuffer;
@@ -24,7 +25,7 @@ public final class IteratorUtils {
      * @param from is key from we get data
      * */
     public static Iterator<Cluster> data(@NotNull final Table table,
-                                         @NotNull final NavigableMap <Long, Table> tables,
+                                         @NotNull final NavigableMap <Long, SSTable> tables,
                                          @NotNull final ByteBuffer from) {
         final List <Iterator<Cluster>> list = compose(table, tables, from);
         final Iterator<Cluster> clusterIterator = collapseEquals(list);
@@ -39,7 +40,7 @@ public final class IteratorUtils {
      * */
     public static List <Iterator<Cluster>> compose(
             @NotNull final Table table,
-            @NotNull final NavigableMap <Long, Table> tables,
+            @NotNull final NavigableMap <Long, SSTable> tables,
             @NotNull final ByteBuffer from
     ){
         final List <Iterator<Cluster>> list = new ArrayList<>();

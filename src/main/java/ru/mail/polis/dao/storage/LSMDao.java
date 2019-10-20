@@ -36,18 +36,18 @@ import java.util.regex.Pattern;
 public final class LSMDao implements DAO {
 
     public static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
+    public static final String SUFFIX_DAT = ".dat";
+    public static final String FILE_NAME = "SSTable_";
+    public static final String SUFFIX_TMP = ".tmp";
 
-    private static final String SUFFIX_DAT = ".dat";
-    private static final String FILE_NAME = "SSTable_";
     private static final Pattern FILE_NAME_PATTERN = Pattern.compile(FILE_NAME);
     private static final Logger logger = LoggerFactory.getLogger(LSMDao.class);
 
     private final File directory;
     private final MemoryTablePool memoryTablePool;
     private final Thread flushedThread;
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
-    private NavigableMap<Long, Table> ssTables;
+    private final long generation;
+    private final NavigableMap<Long, SSTable> ssTables;
 
     /**
      * Creates persistence Dao based on LSMTree.
@@ -76,6 +76,7 @@ public final class LSMDao implements DAO {
         });
         maxGeneration.set(maxGeneration.get() + 1);
         memoryTablePool = new MemoryTablePool(flushLimit, maxGeneration.get());
+        this.generation = maxGeneration.get();
         flushedThread = new Thread(new FlusherTask());
         flushedThread.start();
     }
@@ -91,32 +92,6 @@ public final class LSMDao implements DAO {
 
     private Iterator<Cluster> clusterIterator(@NotNull final ByteBuffer from) {
         return IteratorUtils.data(memoryTablePool, ssTables, from);
-    }
-
-    private void compactDir(final long preGener) throws IOException {
-        lock.writeLock().lock();
-        try {
-            ssTables = new ConcurrentSkipListMap<>();
-            Files.walkFileTree(directory.toPath(), EnumSet.noneOf(FileVisitOption.class), 1, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs)
-                        throws IOException {
-                    final File file = path.toFile();
-                    final Matcher matcher = FILE_NAME_PATTERN.matcher(file.getName());
-                    if (file.getName().endsWith(SUFFIX_DAT) && matcher.find()) {
-                        final long currentGeneration = GenerationUtils.fromPath(path);
-                        if (currentGeneration >= preGener) {
-                            ssTables.put(currentGeneration, new SSTable(file, currentGeneration));
-                            return FileVisitResult.CONTINUE;
-                        }
-                    }
-                    Files.delete(path);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } finally {
-            lock.writeLock().unlock();
-        }
     }
 
     @Override
@@ -141,18 +116,14 @@ public final class LSMDao implements DAO {
 
     @Override
     public void compact() throws IOException {
-        memoryTablePool.compact(ssTables);
+        memoryTablePool.compact(ssTables, directory, generation);
     }
 
     private void flush(final long currentGeneration,
-                       final boolean isCompactFlush,
                        @NotNull final Iterator<Cluster> data) throws IOException {
         if (data.hasNext()) {
             final File sstable = new File(directory, FILE_NAME + currentGeneration + SUFFIX_DAT);
             SSTable.writeToFile(data, sstable);
-            if (isCompactFlush) {
-                ssTables.put(currentGeneration, new SSTable(sstable, currentGeneration));
-            }
         }
     }
 
@@ -167,17 +138,8 @@ public final class LSMDao implements DAO {
                     final Iterator<Cluster> data = flushTable.data();
                     final long currentGeneration = flushTable.getGeneration();
                     poisonReceived = flushTable.isPoisonPills();
-                    final boolean isCompactTable = flushTable.isCompactionTable();
-                    if (isCompactTable || poisonReceived) {
-                        flush(currentGeneration, true, data);
-                    } else {
-                        flush(currentGeneration, false, data);
-                    }
-                    if (isCompactTable) {
-                        compactDir(currentGeneration);
-                    } else {
-                        memoryTablePool.flushed(currentGeneration);
-                    }
+                    flush(currentGeneration, data);
+                    memoryTablePool.flushed(currentGeneration);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IOException e) {
