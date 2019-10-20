@@ -153,6 +153,8 @@ public final class MemoryTablePool implements Table, Closeable {
      * Compact values from all tables with current table.
      *
      * @param sstable is all tables from disk storage
+     * @param directory is current directory for flush
+     * @param generation is generation for new SSTable
      */
     public void compact(@NotNull final NavigableMap<Long, SSTable> sstable,
                         @NotNull final File directory,

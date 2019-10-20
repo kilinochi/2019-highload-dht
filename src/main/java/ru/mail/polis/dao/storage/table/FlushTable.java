@@ -16,7 +16,7 @@ public final class FlushTable {
         this.data = data;
         this.poisonPills = poisonPills;
     }
-    
+
     public long getGeneration() {
         return generation;
     }
