@@ -22,7 +22,7 @@ import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
 
-public class RestService extends HttpServer implements Service {
+public final class RestService extends HttpServer implements Service {
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
     private final Topology<String> nodes;
@@ -33,7 +33,7 @@ public class RestService extends HttpServer implements Service {
      * Create new instance of RestService for interaction with database.
      * @param config in config for server
      * @param dao is dao for interaction with database
-     * @param nodes
+     * @param nodes all nodes in cluster
      */
     private RestService(
             @NotNull final HttpServerConfig config,
@@ -57,7 +57,7 @@ public class RestService extends HttpServer implements Service {
      * Build new instance of RestService.
      * @param port is port on witch Service will be running
      * @param dao is dao for interaction with database
-     * @param nodes
+     * @param nodes is all nodes in the cluster
      */
     public static RestService create(
             final int port,
@@ -145,6 +145,7 @@ public class RestService extends HttpServer implements Service {
         final String primary = nodes.primaryFor(key);
         if(!nodes.isMe(primary)) {
             asyncExecute(session, () -> proxy(primary, request));
+            return;
         }
         switch (request.getMethod()) {
             case Request.METHOD_GET:
@@ -171,11 +172,16 @@ public class RestService extends HttpServer implements Service {
                 ResponseUtils.sendResponse(session, publisher.submit());
             } catch (IOException e) {
                 logger.error("Unable to create response", e);
+                try {
+                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                } catch (IOException ioexecption) {
+                    logger.error("Error while send response " + ioexecption.getMessage());
+                }
             } catch (NoSuchElementException e) {
                 try {
                     session.sendError(Response.NOT_FOUND, "Not found recourse!");
                 } catch (IOException ex) {
-                    logger.error("Error while send error");
+                    logger.error("Error while send error " + ex.getMessage());
                 }
             }
         });

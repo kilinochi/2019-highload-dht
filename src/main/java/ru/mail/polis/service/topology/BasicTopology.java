@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Set;
 
-public class BasicTopology implements Topology<String> {
+public final class BasicTopology implements Topology<String> {
 
     @NotNull
     private final String me;
