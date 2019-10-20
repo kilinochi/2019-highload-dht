@@ -33,18 +33,17 @@ public final class IteratorUtils {
     }
 
     /**
-     * Compose data from tables.
+     * Compose data from ssTables.
      * @param table is table from witch we should be get Iterators by key
-     * @param tables is other tables from witch we should be get Iterators by key
+     * @param ssTables is other ssTables from witch we should be get Iterators by key
      * @param from is key from witch we should be get data
      * */
-    public static List <Iterator<Cluster>> compose(
+    private static List <Iterator<Cluster>> compose(
             @NotNull final Table table,
-            @NotNull final NavigableMap <Long, SSTable> tables,
-            @NotNull final ByteBuffer from
-    ){
+            @NotNull final NavigableMap<Long, SSTable> ssTables,
+            @NotNull final ByteBuffer from){
         final List <Iterator<Cluster>> list = new ArrayList<>();
-        for (final Table fromOther : tables.values()) {
+        for (final Table fromOther : ssTables.values()) {
             list.add(fromOther.iterator(from));
         }
         list.add(table.iterator(from));
@@ -55,7 +54,7 @@ public final class IteratorUtils {
      * Collapse equals iterators.
      * @param data is iterators witch we must be collapse
      * */
-    public static Iterator<Cluster> collapseEquals(@NotNull final List <Iterator<Cluster>> data) {
+    private static Iterator<Cluster> collapseEquals(@NotNull final List<Iterator<Cluster>> data) {
         return Iters.collapseEquals(Iterators.mergeSorted(data, Cluster.COMPARATOR), Cluster::getKey);
     }
     
@@ -63,7 +62,7 @@ public final class IteratorUtils {
      * Filter and get only alive Clusters.
      * @param clusters is data which we should be filtered.
      */
-    public static Iterator<Cluster> filter(@NotNull final Iterator<Cluster> clusters) {
+    private static Iterator<Cluster> filter(@NotNull final Iterator<Cluster> clusters) {
         return Iterators.filter(
                 clusters, cluster -> {
                     assert cluster != null;

@@ -1,6 +1,7 @@
 package ru.mail.polis.dao.storage;
 
 import com.google.common.collect.Iterators;
+import javafx.concurrent.ScheduledService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +11,6 @@ import ru.mail.polis.dao.storage.cluster.Cluster;
 import ru.mail.polis.dao.storage.table.FlushTable;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
-import ru.mail.polis.dao.storage.table.Table;
 import ru.mail.polis.dao.storage.utils.GenerationUtils;
 import ru.mail.polis.dao.storage.utils.IteratorUtils;
 
@@ -28,8 +28,6 @@ import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
