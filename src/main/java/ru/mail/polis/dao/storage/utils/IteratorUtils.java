@@ -25,7 +25,7 @@ public final class IteratorUtils {
      * @param from is key from we get data
      * */
     public static Iterator<Cluster> data(@NotNull final Table table,
-                                         @NotNull final NavigableMap <Long, SSTable> tables,
+                                         @NotNull final NavigableMap<Long, SSTable> tables,
                                          @NotNull final ByteBuffer from) {
         final List<Iterator<Cluster>> list = compose(table, tables, from);
         final Iterator<Cluster> clusterIterator = collapseEquals(list);

@@ -202,7 +202,7 @@ public final class RestService extends HttpServer implements Service {
         try {
             return pool.get(node).invoke(request);
         } catch (InterruptedException | PoolException | HttpException e) {
-            throw new IOException("Can not proxy, " + e);
+            throw (IOException) new IOException().initCause(e);
         }
     }
 
