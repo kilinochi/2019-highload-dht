@@ -1,7 +1,15 @@
 package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
-import one.nio.http.*;
+import one.nio.http.HttpClient;
+import one.nio.http.HttpServer;
+import one.nio.http.HttpSession;
+import one.nio.http.HttpServerConfig;
+import one.nio.http.Request;
+import one.nio.http.Response;
+import one.nio.http.Param;
+import one.nio.http.Path;
+import one.nio.http.HttpException;
 import one.nio.net.ConnectionString;
 import one.nio.net.Socket;
 import one.nio.pool.PoolException;
@@ -62,7 +70,7 @@ public final class RestService extends HttpServer implements Service {
     public static RestService create(
             final int port,
             @NotNull final DAO dao,
-            @NotNull Topology<String> nodes) throws IOException {
+            @NotNull final Topology<String> nodes) throws IOException {
         final AcceptorConfig acceptorConfig = new AcceptorConfig();
         acceptorConfig.port = port;
         final HttpServerConfig httpServerConfig = new HttpServerConfig();

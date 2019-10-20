@@ -26,7 +26,13 @@ public final class StorageSession extends HttpSession {
 
     private Iterator<Record> data;
 
-    public StorageSession(@NotNull final Socket socket, @NotNull final HttpServer server) {
+    /**
+     * Custom session for write range of chunks ro socket.
+     * @param socket is socket in witch will be write range of data
+     * @param server is server in witch context data will be write data
+     */
+    public StorageSession(@NotNull final Socket socket,
+                          @NotNull final HttpServer server) {
         super(socket, server);
     }
 

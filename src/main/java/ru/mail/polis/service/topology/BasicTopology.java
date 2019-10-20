@@ -14,6 +14,12 @@ public final class BasicTopology implements Topology<String> {
     @NotNull
     private final String[] nodes;
 
+
+    /**
+     * Simple topology for cluster.
+     * @param nodes is all nodes in clusters
+     * @param me is current cluster
+     */
     public BasicTopology(
             @NotNull final Set<String> nodes,
             @NotNull final String me) {
@@ -24,13 +30,13 @@ public final class BasicTopology implements Topology<String> {
     }
 
     @Override
-    public boolean isMe(@NotNull String node) {
+    public boolean isMe(@NotNull final String node) {
         return this.me.equals(node);
     }
 
     @NotNull
     @Override
-    public String primaryFor(@NotNull ByteBuffer key) {
+    public String primaryFor(@NotNull final ByteBuffer key) {
         final int hash = key.hashCode();
         final int node = (hash & Integer.MAX_VALUE) % nodes.length;
         return nodes[node];
