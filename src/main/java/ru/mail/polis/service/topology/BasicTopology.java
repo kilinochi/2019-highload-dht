@@ -38,8 +38,8 @@ public final class BasicTopology implements Topology<String> {
     @Override
     public String primaryFor(@NotNull final ByteBuffer key) {
         final int hash = key.hashCode();
-        final int node = (hash & Integer.MAX_VALUE) % nodes.length;
-        return nodes[node];
+        final int index = (hash & Integer.MAX_VALUE) % nodes.length;
+        return nodes[index];
     }
 
     @NotNull
