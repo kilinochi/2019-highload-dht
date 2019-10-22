@@ -17,6 +17,8 @@
 package ru.mail.polis.service;
 
 import java.io.IOException;
+import java.net.URL;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.jetbrains.annotations.NotNull;
@@ -24,6 +26,8 @@ import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.rest.RestService;
 import ru.mail.polis.service.topology.BasicTopology;
+import ru.mail.polis.service.topology.ConsistingHashTopology;
+import ru.mail.polis.service.topology.ServiceNode;
 import ru.mail.polis.service.topology.Topology;
 
 /**
@@ -59,9 +63,14 @@ public final class ServiceFactory {
             throw new IllegalArgumentException("Port out of range");
         }
 
+        final Set<ServiceNode> serviceNodes = new HashSet<>();
+        for(String node : topology) {
+            serviceNodes.add(new ServiceNode(new URL(node)));
+        }
+
         final Topology<String> nodes =
-                new BasicTopology(topology,
-                        "http://localhost:" + port);
+                new ConsistingHashTopology<>(serviceNodes,
+                        "http://localhost:" + port, 10);
         return RestService.create(port, dao, nodes);
     }
 }

@@ -29,17 +29,13 @@ import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
-import ru.mail.polis.service.topology.Node;
 
-public final class RestService extends HttpServer implements Service, Node {
+public final class RestService extends HttpServer implements Service {
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
     private final Topology<String> nodes;
     private final DAO dao;
     private final Map<String, HttpClient> pool;
-
-    private String ip;
-    private String address;
 
     /**
      * Create new instance of RestService for interaction with database.
@@ -82,11 +78,6 @@ public final class RestService extends HttpServer implements Service, Node {
         httpServerConfig.minWorkers = Runtime.getRuntime().availableProcessors();
         httpServerConfig.maxWorkers = Runtime.getRuntime().availableProcessors();
         return new RestService(httpServerConfig, dao, nodes);
-    }
-
-    @Override
-    public String getKey() {
-        return address + ":" + port;
     }
 
     @Override

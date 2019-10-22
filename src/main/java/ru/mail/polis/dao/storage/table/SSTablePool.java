@@ -1,4 +1,4 @@
-package ru.mail.polis.dao.storage.table;
+/*package ru.mail.polis.dao.storage.table;
 
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.storage.cluster.Cluster;
@@ -54,3 +54,4 @@ public final class SSTablePool implements Table {
 
     }
 }
+*/
