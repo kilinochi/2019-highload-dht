@@ -14,7 +14,6 @@ public final class BasicTopology implements Topology<String> {
     @NotNull
     private final String[] nodes;
 
-
     /**
      * Simple topology for cluster.
      * @param nodes is all nodes in clusters
