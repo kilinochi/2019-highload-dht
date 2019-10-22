@@ -11,7 +11,7 @@ import java.util.*;
 
 import static com.google.common.base.Charsets.UTF_8;
 
-public class ConsistingHashTopology <T extends Node> implements Topology<String> {
+public final class ConsistingHashTopology implements Topology<String> {
 
     private static final Logger logger = LoggerFactory.getLogger(ConsistingHashTopology.class);
 
@@ -52,21 +52,10 @@ public class ConsistingHashTopology <T extends Node> implements Topology<String>
         int replicas = 0;
         for(final VirtualNode virtualNode : ring.values()) {
             if(virtualNode.isVirtualNodeOf(node)) {
-                replicas = replicas +1;
+                replicas = replicas + 1;
             }
         }
         return replicas;
-    }
-
-    public void removeNode(ServiceNode node) {
-        final Iterator<Long> iterator = ring.keySet().iterator();
-        while (iterator.hasNext()) {
-            final Long key = iterator.next();
-            final VirtualNode virtualNode = ring.get(key);
-            if(virtualNode.isVirtualNodeOf(node)) {
-                iterator.remove();
-            }
-        }
     }
 
     @Override

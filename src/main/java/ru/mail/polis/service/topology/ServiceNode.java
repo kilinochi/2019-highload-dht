@@ -19,6 +19,6 @@ public final class ServiceNode implements Node, Comparable<ServiceNode> {
 
     @Override
     public int compareTo(@NotNull ServiceNode serviceNode) {
-        return url.getPort() - serviceNode.url.getPort();
+        return Integer.compare(this.url.getPort(), serviceNode.url.getPort());
     }
 }

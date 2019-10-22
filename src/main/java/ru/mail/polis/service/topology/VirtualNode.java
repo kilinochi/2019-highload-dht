@@ -1,6 +1,6 @@
 package ru.mail.polis.service.topology;
 
-public class VirtualNode implements Node {
+public final class VirtualNode implements Node {
 
     private final ServiceNode physicalNode;
     private final int replicaIndex;
