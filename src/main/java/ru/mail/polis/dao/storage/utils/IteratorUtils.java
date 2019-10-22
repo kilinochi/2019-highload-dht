@@ -4,6 +4,7 @@ import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.cluster.ClusterValue;
 import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.table.Table;
 
@@ -66,7 +67,7 @@ public final class IteratorUtils {
         return Iterators.filter(
                 clusters, cluster -> {
                     assert cluster != null;
-                    return !cluster.getClusterValue().isTombstone();
+                    return cluster.getClusterValue().getState() != ClusterValue.State.REMOVED;
                 }
         );
     }

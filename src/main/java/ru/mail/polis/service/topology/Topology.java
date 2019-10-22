@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 
 @ThreadSafe
-public interface Topology<T> {
+public interface Topology<T extends Node> {
     boolean isMe(@NotNull final T node);
 
     @NotNull

@@ -1,25 +1,25 @@
 package ru.mail.polis.service.topology;
 
-public final class VirtualNode implements Node {
+public final class VirtualNode<T extends Node> implements Node {
 
-    private final ServiceNode physicalNode;
+    private final T physicalNode;
     private final int replicaIndex;
 
-    VirtualNode(ServiceNode physicalNode, int replicaIndex) {
+    VirtualNode(T physicalNode, int replicaIndex) {
         this.replicaIndex = replicaIndex;
         this.physicalNode = physicalNode;
     }
 
     @Override
-    public String getKey() {
-        return physicalNode.getKey() + "-" + replicaIndex;
+    public String url() {
+        return physicalNode.url() + "-" + replicaIndex;
     }
 
     boolean isVirtualNodeOf(ServiceNode pNode) {
-        return physicalNode.getKey().equals(pNode.getKey());
+        return physicalNode.url().equals(pNode.url());
     }
 
-    ServiceNode getPhysicalNode() {
+    T getPhysicalNode() {
         return physicalNode;
     }
 }

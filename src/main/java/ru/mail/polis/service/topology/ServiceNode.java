@@ -13,7 +13,7 @@ public final class ServiceNode implements Node, Comparable<ServiceNode> {
     }
 
     @Override
-    public String getKey() {
+    public String url() {
         return url.toString();
     }
 

@@ -25,10 +25,7 @@ import org.jetbrains.annotations.NotNull;
 
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.rest.RestService;
-import ru.mail.polis.service.topology.BasicTopology;
-import ru.mail.polis.service.topology.ConsistingHashTopology;
-import ru.mail.polis.service.topology.ServiceNode;
-import ru.mail.polis.service.topology.Topology;
+import ru.mail.polis.service.topology.*;
 
 /**
  * Constructs {@link Service} instances.
@@ -68,9 +65,9 @@ public final class ServiceFactory {
             serviceNodes.add(new ServiceNode(new URL(node)));
         }
 
-        final Topology<String> nodes =
+        final Topology<Node> topologyNodes =
                 new ConsistingHashTopology(serviceNodes,
-                        "http://localhost:" + port, 10);
-        return RestService.create(port, dao, nodes);
+                        new ServiceNode(new URL("http://localhost:" + port)), 10);
+        return RestService.create(port, dao, topologyNodes);
     }
 }

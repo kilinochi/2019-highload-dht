@@ -11,22 +11,22 @@ import java.util.*;
 
 import static com.google.common.base.Charsets.UTF_8;
 
-public final class ConsistingHashTopology implements Topology<String> {
+public final class ConsistingHashTopology <T extends Node> implements Topology {
 
     private static final Logger logger = LoggerFactory.getLogger(ConsistingHashTopology.class);
 
-    private final SortedMap<Long, VirtualNode> ring = new TreeMap<>();
+    private final SortedMap<Long,T> ring = new TreeMap<>();
     private final HashFunction hashFunction;
 
     @NotNull
-    private final String me;
+    private final T me;
 
     @NotNull
     private final ServiceNode[] nodes;
 
     public ConsistingHashTopology(
             @NotNull final Set<ServiceNode> nodes,
-            @NotNull final String me,
+            @NotNull final T me,
             final long virtualNodeCount) {
         this.me = me;
         this.nodes = nodes.toArray(ServiceNode[]::new);
@@ -44,7 +44,7 @@ public final class ConsistingHashTopology implements Topology<String> {
         int existingReplicas = getExistingReplicas(node);
         for(int i = 0; i < vNodeCount; i++) {
             VirtualNode virtualNode = new VirtualNode(node, i + existingReplicas);
-            ring.put(hashFunction.hash(ByteBuffer.wrap(virtualNode.getKey().getBytes(UTF_8))), virtualNode);
+            ring.put(hashFunction.hash(ByteBuffer.wrap(virtualNode.url().getBytes(UTF_8))), virtualNode);
         }
     }
 
@@ -59,23 +59,23 @@ public final class ConsistingHashTopology implements Topology<String> {
     }
 
     @Override
-    public boolean isMe(@NotNull String node) {
-        return this.me.equals(node);
+    public boolean isMe(@NotNull Node node) {
+        return this.me.url().equals(node.url());
     }
 
     @NotNull
     @Override
-    public String primaryFor(@NotNull ByteBuffer key) {
+    public Node primaryFor(@NotNull ByteBuffer key) {
         final Long hashVal = hashFunction.hash(key);
         final SortedMap<Long, VirtualNode> tailMap = ring.tailMap(hashVal);
         final Long nodeHashVal = !tailMap.isEmpty() ? tailMap.firstKey() : ring.firstKey();
-        return ring.get(nodeHashVal).getPhysicalNode().getKey();
+        return ring.get(nodeHashVal).getPhysicalNode();
     }
 
     @NotNull
     @Override
-    public Set<String> all() {
-        return Set.of(Arrays.toString(this.nodes));
+    public Set all() {
+        return Set.of(this.nodes);
     }
 
     private static final class MD5Hash implements HashFunction {

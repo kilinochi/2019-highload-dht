@@ -19,21 +19,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Map;
+import java.util.*;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
+import ru.mail.polis.service.topology.Node;
 import ru.mail.polis.service.topology.Topology;
 
 public final class RestService extends HttpServer implements Service {
+//    private static final String PROXY_HEADER = "X-OK-Proxy: True";
+  //  private static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
-    private final Topology<String> nodes;
+    private final Topology<Node> topology;
     private final DAO dao;
     private final Map<String, HttpClient> pool;
 
@@ -41,23 +41,25 @@ public final class RestService extends HttpServer implements Service {
      * Create new instance of RestService for interaction with database.
      * @param config in config for server
      * @param dao is dao for interaction with database
-     * @param nodes all nodes in cluster
+     * @param topology all nodes in cluster
      */
     private RestService(
             @NotNull final HttpServerConfig config,
             @NotNull final DAO dao,
-            @NotNull final Topology<String> nodes) throws IOException {
+            @NotNull final Topology<Node> topology) throws IOException {
         super(config);
         this.dao = dao;
 
-        this.nodes = nodes;
+        this.topology = topology;
         this.pool = new HashMap<>();
-        for(final String node : this.nodes.all()) {
-            if(nodes.isMe(node)) {
+        for(final Node node : this.topology.all()) {
+            logger.info("We have next node in the pool: " + node);
+            if(topology.isMe(node)) {
                 continue;
             }
+            final String host = node.getKey();
             assert !pool.containsKey(node);
-            pool.put(node, new HttpClient(new ConnectionString(node + "?timeout=100")));
+            pool.put(host, new HttpClient(new ConnectionString(node + "?timeout=100")));
         }
     }
 
@@ -70,7 +72,7 @@ public final class RestService extends HttpServer implements Service {
     public static RestService create(
             final int port,
             @NotNull final DAO dao,
-            @NotNull final Topology<String> nodes) throws IOException {
+            @NotNull final Topology<Node> nodes) throws IOException {
         final AcceptorConfig acceptorConfig = new AcceptorConfig();
         acceptorConfig.port = port;
         final HttpServerConfig httpServerConfig = new HttpServerConfig();
@@ -150,8 +152,8 @@ public final class RestService extends HttpServer implements Service {
             return;
         }
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
-        final String primary = nodes.primaryFor(key);
-        if(!nodes.isMe(primary)) {
+        final Node primary = topology.primaryFor(key);
+        if(!topology.isMe(primary)) {
             asyncExecute(session, () -> proxy(primary, request));
             return;
         }
@@ -196,11 +198,12 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private Response proxy(
-            @NotNull final String node,
+            @NotNull final Node node,
             @NotNull final Request request) throws IOException {
-        assert !nodes.isMe(node);
+        assert !topology.isMe(node);
         try {
-            return pool.get(node).invoke(request);
+            logger.info("We proxy our request to another node: " + node);
+            return pool.get(node.getKey()).invoke(request);
         } catch (InterruptedException | PoolException | HttpException e) {
             throw (IOException) new IOException().initCause(e);
         }
@@ -234,7 +237,8 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private static final class ResponseUtils {
-        private ResponseUtils(){}
+        private ResponseUtils() {
+        }
 
         private static void sendResponse(@NotNull final HttpSession session,
                                          @NotNull final Response response) {
@@ -248,5 +252,66 @@ public final class RestService extends HttpServer implements Service {
                 }
             }
         }
+
+/*        @NotNull
+        private static Response from(@NotNull final ClusterValue clusterValue,
+                                     final boolean proxy) {
+            final Response result;
+            switch (clusterValue.getState()) {
+                case REMOVED: {
+                    result = new Response(Response.NOT_FOUND, Response.EMPTY);
+                    if(proxy) {
+                        result.addHeader(TIMESTAMP_HEADER + clusterValue.getTimestamp());
+                    }
+                    return result;
+                }
+                case PRESENT: {
+                    final ByteBuffer value = clusterValue.getData();
+                    final ByteBuffer duplicate = value.duplicate();
+                    final byte[] body = new byte[duplicate.remaining()];
+                    duplicate.get(body);
+                    result = new Response(Response.OK, body);
+                    if(proxy) {
+                        result.addHeader(TIMESTAMP_HEADER + clusterValue.getTimestamp());
+                    }
+                    return result;
+                }
+                case ABSENT:{
+                    return new Response(Response.NOT_FOUND, Response.EMPTY);
+                }
+                default:
+                    throw new IllegalArgumentException("Wrong input data!");
+            }
+        }
+    }*/
+
+/*    @NotNull
+    private static ClusterValue from(@NotNull final Response response) throws IOException {
+        final String timestamp = response.getHeader(TIMESTAMP_HEADER);
+        if(response.getStatus() == 200) {
+            if(timestamp == null) {
+                throw new IllegalArgumentException("Wrong input data!");
+            }
+            return ClusterValue.present(
+                ByteBuffer.wrap(response.getBody()), Long.parseLong(timestamp)
+            );
+        } else if(response.getStatus() == 404) {
+            if(timestamp == null) {
+                return ClusterValue.absent();
+            } else {
+                return ClusterValue.removed(Long.parseLong(timestamp));
+            }
+        } else {
+            throw new IOException("IOException while get response from nodes");
+        }
+    }
+
+    @NotNull
+    private static ClusterValue merge(@NotNull final Collection<ClusterValue> values) {
+        return values.stream()
+                .filter(clusterValue -> clusterValue.getState() != ClusterValue.State.ABSENT)
+                .max(Comparator.comparingLong(ClusterValue::getTimestamp))
+                .orElseGet(ClusterValue::absent);
+    }*/
     }
 }

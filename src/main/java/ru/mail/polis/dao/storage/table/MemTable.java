@@ -62,7 +62,7 @@ public final class MemTable implements Table {
 
         if (prev == null) {
             tableSizeInBytes.addAndGet(key.remaining() + value.remaining());
-        } else if (prev.isTombstone()) {
+        } else if (prev.getState() == ClusterValue.State.REMOVED) {
             tableSizeInBytes.addAndGet(value.remaining());
         } else {
             tableSizeInBytes.addAndGet(value.remaining() - prev.getData().remaining());
@@ -80,7 +80,7 @@ public final class MemTable implements Table {
         final ClusterValue prev = storage.put(key, ClusterValue.deadCluster());
         if (prev == null) {
             tableSizeInBytes.addAndGet(key.remaining());
-        } else if (!prev.isTombstone()) {
+        } else if (prev.getState() != ClusterValue.State.REMOVED) {
             tableSizeInBytes.addAndGet(-prev.getData().remaining());
         }
     }
