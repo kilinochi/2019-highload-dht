@@ -20,12 +20,15 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.jetbrains.annotations.NotNull;
 
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.rest.RestService;
 import ru.mail.polis.service.topology.*;
+import ru.mail.polis.service.topology.node.Node;
+import ru.mail.polis.service.topology.node.ServiceNode;
 
 /**
  * Constructs {@link Service} instances.
@@ -60,12 +63,12 @@ public final class ServiceFactory {
             throw new IllegalArgumentException("Port out of range");
         }
 
-        final Set<ServiceNode> serviceNodes = new HashSet<>();
+        final Set<ServiceNode> serviceNodes = new TreeSet<>();
         for(String node : topology) {
             serviceNodes.add(new ServiceNode(new URL(node)));
         }
 
-        final Topology<Node> topologyNodes =
+        final Topology<ServiceNode> topologyNodes =
                 new ConsistingHashTopology(serviceNodes,
                         new ServiceNode(new URL("http://localhost:" + port)), 10);
         return RestService.create(port, dao, topologyNodes);

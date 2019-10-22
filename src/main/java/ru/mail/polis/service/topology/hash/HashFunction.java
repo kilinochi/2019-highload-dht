@@ -1,4 +1,4 @@
-package ru.mail.polis.service.topology;
+package ru.mail.polis.service.topology.hash;
 
 import org.jetbrains.annotations.NotNull;
 

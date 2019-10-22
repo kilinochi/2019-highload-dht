@@ -25,15 +25,16 @@ import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
-import ru.mail.polis.service.topology.Node;
 import ru.mail.polis.service.topology.Topology;
+import ru.mail.polis.service.topology.node.Node;
+import ru.mail.polis.service.topology.node.ServiceNode;
 
 public final class RestService extends HttpServer implements Service {
 //    private static final String PROXY_HEADER = "X-OK-Proxy: True";
   //  private static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
-    private final Topology<Node> topology;
+    private final Topology<ServiceNode> topology;
     private final DAO dao;
     private final Map<String, HttpClient> pool;
 
@@ -46,20 +47,20 @@ public final class RestService extends HttpServer implements Service {
     private RestService(
             @NotNull final HttpServerConfig config,
             @NotNull final DAO dao,
-            @NotNull final Topology<Node> topology) throws IOException {
+            @NotNull final Topology<ServiceNode> topology) throws IOException {
         super(config);
         this.dao = dao;
-
         this.topology = topology;
         this.pool = new HashMap<>();
-        for(final Node node : this.topology.all()) {
-            logger.info("We have next node in the pool: " + node);
+        for(final ServiceNode node : this.topology.all()) {
+            final String host = node.key();
             if(topology.isMe(node)) {
+                logger.info("We process int host : " + host);
                 continue;
             }
-            final String host = node.getKey();
-            assert !pool.containsKey(node);
-            pool.put(host, new HttpClient(new ConnectionString(node + "?timeout=100")));
+            logger.info("We have next host in the pool: " + host);
+            assert !pool.containsKey(node.key());
+            pool.put(host, new HttpClient(new ConnectionString(host + "?timeout=100")));
         }
     }
 
@@ -72,7 +73,7 @@ public final class RestService extends HttpServer implements Service {
     public static RestService create(
             final int port,
             @NotNull final DAO dao,
-            @NotNull final Topology<Node> nodes) throws IOException {
+            @NotNull final Topology<ServiceNode> nodes) throws IOException {
         final AcceptorConfig acceptorConfig = new AcceptorConfig();
         acceptorConfig.port = port;
         final HttpServerConfig httpServerConfig = new HttpServerConfig();
@@ -115,6 +116,7 @@ public final class RestService extends HttpServer implements Service {
             @Param("end") final String end,
             @NotNull final Request request,
             @NotNull final HttpSession session) {
+        logger.info("Start with :" + start + " and end with: " + end);
         if (start == null || start.isEmpty()) {
             ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
@@ -152,7 +154,7 @@ public final class RestService extends HttpServer implements Service {
             return;
         }
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
-        final Node primary = topology.primaryFor(key);
+        final ServiceNode primary = topology.primaryFor(key);
         if(!topology.isMe(primary)) {
             asyncExecute(session, () -> proxy(primary, request));
             return;
@@ -198,12 +200,12 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private Response proxy(
-            @NotNull final Node node,
+            @NotNull final ServiceNode node,
             @NotNull final Request request) throws IOException {
         assert !topology.isMe(node);
         try {
-            logger.info("We proxy our request to another node: " + node);
-            return pool.get(node.getKey()).invoke(request);
+            logger.info("We proxy our request to another node: " + node.key());
+            return pool.get(node.key()).invoke(request);
         } catch (InterruptedException | PoolException | HttpException e) {
             throw (IOException) new IOException().initCause(e);
         }

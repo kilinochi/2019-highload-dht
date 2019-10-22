@@ -1,6 +1,7 @@
 package ru.mail.polis.service.topology;
 
 import org.jetbrains.annotations.NotNull;
+import ru.mail.polis.service.topology.node.Node;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.nio.ByteBuffer;
