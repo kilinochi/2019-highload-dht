@@ -21,7 +21,8 @@ public interface Topology<T extends Node> {
     long size();
 
     @NotNull
-    T[] replicas(@NotNull final ByteBuffer key);
+    T[] replicas(@NotNull final ByteBuffer key,
+                 final long count);
 
     @NotNull
     static Topology<ServiceNode> basic(@NotNull Set<ServiceNode> serviceNodes,
