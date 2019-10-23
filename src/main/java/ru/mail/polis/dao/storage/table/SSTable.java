@@ -210,7 +210,9 @@ public final class SSTable implements Table {
         offset += Long.BYTES;
 
         if (timeStamp < 0) {
-            return Cluster.of(key.slice(), new ClusterValue(null,  ClusterValue.State.REMOVED , -timeStamp), currentGeneration);
+            return Cluster.of(key.slice(),
+                    new ClusterValue(null, ClusterValue.State.REMOVED , -timeStamp),
+                    currentGeneration);
         } else {
             final int valueSize = clusters.getInt((int) offset);
             offset += Integer.BYTES;
@@ -219,7 +221,9 @@ public final class SSTable implements Table {
             value.limit(value.position() + valueSize)
                     .position((int) offset)
                     .limit((int) (offset + valueSize));
-            return Cluster.of(key.slice(), new ClusterValue(value.slice(), ClusterValue.State.PRESENT  ,timeStamp), currentGeneration);
+            return Cluster.of(key.slice(),
+                    new ClusterValue(value.slice(),
+                            ClusterValue.State.PRESENT, timeStamp), currentGeneration);
         }
     }
 }

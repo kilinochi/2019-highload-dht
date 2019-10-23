@@ -74,7 +74,12 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     public ServiceNode primaryFor(@NotNull final ByteBuffer key) {
         final Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
         final SortedMap<Long, VirtualNode> tailMap = ring.tailMap(hashVal);
-        final Long nodeHashVal = !tailMap.isEmpty() ? tailMap.firstKey() : ring.firstKey();
+        final Long nodeHashVal;
+        if(tailMap.isEmpty()) {
+            nodeHashVal = ring.firstKey();
+        } else {
+            nodeHashVal = tailMap.firstKey();
+        }
         return ring.get(nodeHashVal).getServiceNode();
     }
 
@@ -103,11 +108,11 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
             final byte[] bytes = new byte[duplicate.remaining()];
             key.get(bytes);
             messageDigest.update(bytes);
-            byte[] digest = messageDigest.digest();
+            final byte[] digest = messageDigest.digest();
             long hash = 0;
             for(int i = 0; i < 4; i++) {
                 hash <<= 8;
-                hash |= ((int) digest[i]);
+                hash |= digest[i];
             }
             return hash;
         }

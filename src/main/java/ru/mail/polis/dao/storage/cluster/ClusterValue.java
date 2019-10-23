@@ -27,19 +27,30 @@ public final class ClusterValue implements Comparable<ClusterValue> {
         this.timestamp = timestamp;
     }
 
+    /**
+     * Alive cluster value (cell) in storage.
+     * @param data is data of value
+     */
     public static ClusterValue of(@NotNull final ByteBuffer data) {
         return new ClusterValue(data.duplicate(),
                 State.PRESENT,
                 System.currentTimeMillis());
     }
 
+    /**
+     * Removed value (cell) in storage.
+     */
     public static ClusterValue deadCluster() {
         return new ClusterValue(
                 null,
                 State.REMOVED,
                 System.currentTimeMillis());
     }
-
+    /**
+     * Present (alive) value witch we want to read by timestamp.
+     * @param data us data in this value.
+     * @param timestamp is timestamp in this value.
+     */
     public static ClusterValue present(
             @NotNull final ByteBuffer data,
             final long timestamp) {
