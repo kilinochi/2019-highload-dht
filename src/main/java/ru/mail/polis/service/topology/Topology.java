@@ -18,6 +18,8 @@ public interface Topology<T extends Node> {
     @NotNull
     Set<T> all();
 
+    long size();
+
     @NotNull
     static Topology<ServiceNode> basic(@NotNull Set<ServiceNode> serviceNodes,
                                        @NotNull ServiceNode me) {

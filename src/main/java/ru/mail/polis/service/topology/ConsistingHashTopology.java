@@ -89,6 +89,11 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
         return nodes;
     }
 
+    @Override
+    public long size() {
+        return nodes.size();
+    }
+
     private static final class MD5Hash implements HashFunction {
 
         private MessageDigest messageDigest;

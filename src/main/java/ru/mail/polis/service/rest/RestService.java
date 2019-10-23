@@ -1,6 +1,7 @@
 package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Splitter;
 import one.nio.http.HttpClient;
 import one.nio.http.HttpServer;
 import one.nio.http.HttpSession;
@@ -25,6 +26,7 @@ import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Comparator;
 import java.util.Collection;
+import java.util.List;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
@@ -39,7 +41,8 @@ public final class RestService extends HttpServer implements Service {
     private static final String PROXY_HEADER = "X-OK-Proxy: True";
     private static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
 
-    private final Topology<ServiceNode> topology;
+    private final RF defaultRF;
+    private final Topology<ServiceNode> nodes;
     private final DAO dao;
     private final Map<String, HttpClient> pool;
 
@@ -47,19 +50,20 @@ public final class RestService extends HttpServer implements Service {
      * Create new instance of RestService for interaction with database.
      * @param config in config for server
      * @param dao is dao for interaction with database
-     * @param topology all nodes in cluster
+     * @param nodes all nodes in cluster
      */
     private RestService(
             @NotNull final HttpServerConfig config,
             @NotNull final DAO dao,
-            @NotNull final Topology<ServiceNode> topology) throws IOException {
+            @NotNull final Topology<ServiceNode> nodes) throws IOException {
         super(config);
         this.dao = dao;
-        this.topology = topology;
+        this.nodes = nodes;
         this.pool = new HashMap<>();
-        for(final ServiceNode node : this.topology.all()) {
+        this.defaultRF = new RF(nodes.size() / 2 + 1 , nodes.size());
+        for(final ServiceNode node : this.nodes.all()) {
             final String host = node.key();
-            if(topology.isMe(node)) {
+            if(nodes.isMe(node)) {
                 logger.info("We process int host : " + host);
                 continue;
             }
@@ -146,12 +150,14 @@ public final class RestService extends HttpServer implements Service {
     /**
      * Rest-endpoint with this uri.
      * @param id is parameters for uri
+     * @param replicas is replication factor in this endpoint
      * @param request is request on this uri
      * @param session is current session
      */
     @Path("/v0/entity")
     public void entity(
             @Param("id") final String id,
+            @Param("replicas") final String replicas,
             final Request request,
             final HttpSession session) {
         if (id == null || id.isEmpty()) {
@@ -159,8 +165,21 @@ public final class RestService extends HttpServer implements Service {
             return;
         }
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
-        final ServiceNode primary = topology.primaryFor(key);
-        if(!topology.isMe(primary)) {
+
+        final boolean proxied = request.getHeader(PROXY_HEADER) != null;
+
+        RF rf = null;
+        try {
+            rf = replicas == null ? defaultRF : RF.of(replicas);
+            if(rf.ask < 1 || rf.from < rf.ask || rf.from > nodes.size()) {
+                throw new IllegalArgumentException("From is too big!");
+            }
+        } catch (IllegalArgumentException e) {
+            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, "WrongRF".getBytes(Charsets.UTF_8)));
+        }
+
+        final ServiceNode primary = nodes.primaryFor(key);
+        if(!nodes.isMe(primary)) {
             asyncExecute(session, () -> proxy(primary, request));
             return;
         }
@@ -169,7 +188,8 @@ public final class RestService extends HttpServer implements Service {
                 asyncExecute(session, () -> get(key));
                 break;
             case Request.METHOD_PUT:
-                asyncExecute(session, () -> upsert(key, request.getBody()));
+                final RF finalRf = rf;
+                asyncExecute(session, () -> upsert(key, request.getBody(), finalRf, proxied));
                 break;
             case Request.METHOD_DELETE:
                 asyncExecute(session, () -> delete(key));
@@ -207,7 +227,7 @@ public final class RestService extends HttpServer implements Service {
     private Response proxy(
             @NotNull final ServiceNode node,
             @NotNull final Request request) throws IOException {
-        assert !topology.isMe(node);
+        assert !nodes.isMe(node);
         try {
             logger.info("We proxy our request to another node: " + node.key());
             return pool.get(node.key()).invoke(request);
@@ -218,9 +238,15 @@ public final class RestService extends HttpServer implements Service {
 
     private Response upsert(
             @NotNull final ByteBuffer key,
-            @NotNull final byte[] value) throws IOException {
-        dao.upsert(key, ByteBuffer.wrap(value));
-        return new Response(Response.CREATED, Response.EMPTY);
+            @NotNull final byte[] value,
+            @NotNull final RF rf,
+            final boolean isProxy) throws IOException {
+        if(isProxy) {
+            dao.upsert(key, ByteBuffer.wrap(value));
+            return new Response(Response.CREATED, Response.EMPTY);
+        }
+
+        final String[] nodes =
     }
 
     private Response delete(
@@ -265,6 +291,22 @@ public final class RestService extends HttpServer implements Service {
         } else {
             throw new IOException("IOException while get response from nodes");
         }
+    }
+
+    private String[] replicas(final String id, final int count) {
+        if(count > nodes.size()) {
+            throw new IllegalArgumentException("Wrong input data");
+        }
+
+        final String[] result = new String[count];
+        final String[] nodesArray = new String[Math.toIntExact(nodes.size())];
+
+        long i = (id.hashCode() & Integer.MAX_VALUE) % nodes.size();
+        for (int j = 0; j < count; j++) {
+            result[j] = nodesArray[Math.toIntExact(i)];
+        }
+
+        return result;
     }
 
     @FunctionalInterface
@@ -317,6 +359,25 @@ public final class RestService extends HttpServer implements Service {
                 default:
                     throw new IllegalArgumentException("Wrong input data!");
             }
+        }
+    }
+
+    private static final class RF {
+        private final long ask;
+        private final long from;
+
+        private RF(final long ask, final long from) {
+            this.ask = ask;
+            this.from = from;
+        }
+
+        @NotNull
+        private static RF of(@NotNull final String value) {
+            final List<String> values = Splitter.on('/').splitToList(value);
+            if(values.size() != 2) {
+                throw new IllegalArgumentException("Wrong replica factor:" + value);
+            }
+            return new RF(Integer.parseInt(values.get(0)), Integer.parseInt(values.get(1)));
         }
     }
 }

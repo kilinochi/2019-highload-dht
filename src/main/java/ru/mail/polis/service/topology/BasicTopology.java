@@ -47,4 +47,9 @@ public final class BasicTopology implements Topology<ServiceNode> {
     public Set<ServiceNode> all() {
         return Set.of(this.nodes);
     }
+
+    @Override
+    public long size() {
+        return nodes.length;
+    }
 }
