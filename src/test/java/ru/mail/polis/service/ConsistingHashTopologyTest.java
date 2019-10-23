@@ -36,7 +36,7 @@ final class ConsistingHashTopologyTest {
     }
 
     private static final long EXPECTED_KEYS_PER_NODE = KEYS_COUNT / NODES.size();
-    private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.15); // ±20%
+    private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.15);
 
 
     @Test
