@@ -30,7 +30,7 @@ public final class BasicTopology implements Topology<ServiceNode> {
     }
 
     @Override
-    public boolean isMe(@NotNull ServiceNode node) {
+    public boolean isMe(@NotNull final ServiceNode node) {
         return this.me.key().equals(node.key());
     }
 

@@ -46,6 +46,7 @@ public final class ClusterValue implements Comparable<ClusterValue> {
                 State.REMOVED,
                 System.currentTimeMillis());
     }
+
     /**
      * Present (alive) value witch we want to read by timestamp.
      * @param data us data in this value.
@@ -61,6 +62,10 @@ public final class ClusterValue implements Comparable<ClusterValue> {
         );
     }
 
+    /**
+     * Removed (dead) value in storage.
+     * @param timestamp is timestamp of this value.
+     */
     public static ClusterValue removed(final long timestamp) {
         return new ClusterValue(
                 null,
