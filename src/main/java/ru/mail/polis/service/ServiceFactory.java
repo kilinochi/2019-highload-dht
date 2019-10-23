@@ -69,8 +69,9 @@ public final class ServiceFactory {
         }
 
         final Topology<ServiceNode> topologyNodes =
-                new ConsistingHashTopology(serviceNodes,
-                        new ServiceNode(new URL("http://localhost:" + port)), 10);
+                Topology.consistingHashTopology(
+                        serviceNodes,
+                        new ServiceNode(new URL("http://localhost:"+port)));
         return RestService.create(port, dao, topologyNodes);
     }
 }

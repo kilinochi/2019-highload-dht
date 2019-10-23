@@ -25,9 +25,15 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     private final SortedMap<Long, VirtualNode> ring = new TreeMap<>();
     private final HashFunction hashFunction;
 
-    public ConsistingHashTopology(@NotNull final Set<ServiceNode> nodes,
-                                  @NotNull final ServiceNode node,
-                                  final long virtualNodeCount) {
+    /**
+     * Create topology based on Consisting hashing.
+     * @param nodes is all nodes in cluster
+     * @param node is current node.
+     * @param virtualNodeCount  is virtual node count in ring.
+     */
+    ConsistingHashTopology(@NotNull final Set<ServiceNode> nodes,
+                           @NotNull final ServiceNode node,
+                           final long virtualNodeCount) {
         this.me = node;
         this.nodes = nodes;
         this.hashFunction = new MD5Hash();
@@ -36,18 +42,19 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
         }
     }
 
-    private void addNode(ServiceNode serviceNode, long vNodeCount) {
+    private void addNode(@NotNull final ServiceNode serviceNode,
+                         final long vNodeCount) {
         if(vNodeCount < 0) {
             throw new IllegalArgumentException("Illegal virtual node counts : " + vNodeCount);
         }
-        int existingReplicas = getExistingReplicas(serviceNode);
+        final int existingReplicas = getExistingReplicas(serviceNode);
         for(int i = 0; i < vNodeCount; i++) {
-            VirtualNode virtualNode = new VirtualNode(serviceNode, i + existingReplicas);
+            final VirtualNode virtualNode = new VirtualNode(serviceNode, i + existingReplicas);
             ring.put(hashFunction.hash(ByteBuffer.wrap(virtualNode.key().getBytes(UTF_8))), virtualNode);
         }
     }
 
-    private int getExistingReplicas(ServiceNode node) {
+    private int getExistingReplicas(@NotNull final ServiceNode node) {
         int replicas = 0;
         for(final VirtualNode virtualNode : ring.values()) {
             if(virtualNode.isVirtualNodeOf(node)) {
@@ -58,13 +65,13 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     }
 
     @Override
-    public boolean isMe(@NotNull ServiceNode node) {
+    public boolean isMe(@NotNull final ServiceNode node) {
         return me.key().equals(node.key());
     }
 
     @NotNull
     @Override
-    public ServiceNode primaryFor(@NotNull ByteBuffer key) {
+    public ServiceNode primaryFor(@NotNull final ByteBuffer key) {
         final Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
         final SortedMap<Long, VirtualNode> tailMap = ring.tailMap(hashVal);
         final Long nodeHashVal = !tailMap.isEmpty() ? tailMap.firstKey() : ring.firstKey();

@@ -7,6 +7,11 @@ public final class VirtualNode implements Node {
     private final ServiceNode serviceNode;
     private final int replicaIndex;
 
+    /**
+     * Virtual node is range in ring of cluster nodes.
+     * @param replicaIndex index of replica
+     * @param serviceNode is physical node in this range
+     */
     public VirtualNode(@NotNull final ServiceNode serviceNode,
                        final int replicaIndex) {
         this.serviceNode = serviceNode;

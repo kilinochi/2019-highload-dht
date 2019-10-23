@@ -2,6 +2,7 @@ package ru.mail.polis.service.topology;
 
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.service.topology.node.Node;
+import ru.mail.polis.service.topology.node.ServiceNode;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.nio.ByteBuffer;
@@ -16,4 +17,16 @@ public interface Topology<T extends Node> {
 
     @NotNull
     Set<T> all();
+
+    @NotNull
+    static Topology<ServiceNode> basic(@NotNull Set<ServiceNode> serviceNodes,
+                                       @NotNull ServiceNode me) {
+        return new BasicTopology(serviceNodes, me);
+    }
+
+    @NotNull
+    static Topology<ServiceNode> consistingHashTopology(@NotNull Set<ServiceNode> serviceNodes,
+                                                        @NotNull ServiceNode me){
+        return new ConsistingHashTopology(serviceNodes, me, 10);
+    }
 }
