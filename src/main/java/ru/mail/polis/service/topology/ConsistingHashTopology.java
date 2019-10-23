@@ -10,9 +10,7 @@ import ru.mail.polis.service.topology.node.VirtualNode;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 
 import static com.google.common.base.Charsets.UTF_8;
 
@@ -64,6 +62,11 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
         return replicas;
     }
 
+    private SortedMap<Long, VirtualNode> tailMap(@NotNull final ByteBuffer key) {
+        Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
+        return ring.tailMap(hashVal);
+    }
+
     @Override
     public boolean isMe(@NotNull final ServiceNode node) {
         return me.key().equals(node.key());
@@ -72,8 +75,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     @NotNull
     @Override
     public ServiceNode primaryFor(@NotNull final ByteBuffer key) {
-        final Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
-        final SortedMap<Long, VirtualNode> tailMap = ring.tailMap(hashVal);
+        final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
         final Long nodeHashVal;
         if(tailMap.isEmpty()) {
             nodeHashVal = ring.firstKey();
@@ -92,6 +94,18 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     @Override
     public long size() {
         return nodes.size();
+    }
+
+    @NotNull
+    @Override
+    public ServiceNode[] replicas(@NotNull final ByteBuffer key) {
+        final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
+        return tailMap.values()
+                .stream()
+                .map(VirtualNode::getServiceNode)
+                .distinct()
+                .sorted()
+                .toArray(ServiceNode[]::new);
     }
 
     private static final class MD5Hash implements HashFunction {
