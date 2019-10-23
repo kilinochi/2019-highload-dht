@@ -23,9 +23,12 @@ import java.util.Map;
 import java.util.Iterator;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
+import java.util.Comparator;
+import java.util.Collection;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.dao.storage.cluster.ClusterValue;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
@@ -33,6 +36,8 @@ import ru.mail.polis.service.topology.node.ServiceNode;
 
 public final class RestService extends HttpServer implements Service {
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
+    private static final String PROXY_HEADER = "X-OK-Proxy: True";
+    private static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
 
     private final Topology<ServiceNode> topology;
     private final DAO dao;
@@ -233,6 +238,35 @@ public final class RestService extends HttpServer implements Service {
         return new Response(Response.OK, body);
     }
 
+    @NotNull
+    private static ClusterValue merge(@NotNull final Collection<ClusterValue> values) {
+        return values.stream()
+                .filter(clusterValue -> clusterValue.getState() != ClusterValue.State.ABSENT)
+                .max(Comparator.comparingLong(ClusterValue::getTimestamp))
+                .orElseGet(ClusterValue::absent);
+    }
+
+    @NotNull
+    private static ClusterValue from(@NotNull final Response response) throws IOException {
+        final String timestamp = response.getHeader(TIMESTAMP_HEADER);
+        if(response.getStatus() == 200) {
+            if(timestamp == null) {
+                throw new IllegalArgumentException("Wrong input data!");
+            }
+            return ClusterValue.present(
+                    ByteBuffer.wrap(response.getBody()), Long.parseLong(timestamp)
+            );
+        } else if(response.getStatus() == 404) {
+            if(timestamp == null) {
+                return ClusterValue.absent();
+            } else {
+                return ClusterValue.removed(Long.parseLong(timestamp));
+            }
+        } else {
+            throw new IOException("IOException while get response from nodes");
+        }
+    }
+
     @FunctionalInterface
     private interface ResponsePublisher {
         Response submit() throws IOException;
@@ -252,6 +286,36 @@ public final class RestService extends HttpServer implements Service {
                 } catch (IOException ex) {
                     logger.error("Error while send error : " + ex.getMessage());
                 }
+            }
+        }
+        @NotNull
+        private static Response from(@NotNull final ClusterValue clusterValue,
+                                     final boolean proxy) {
+            final Response result;
+            switch (clusterValue.getState()) {
+                case REMOVED: {
+                    result = new Response(Response.NOT_FOUND, Response.EMPTY);
+                    if(proxy) {
+                        result.addHeader(TIMESTAMP_HEADER + clusterValue.getTimestamp());
+                    }
+                    return result;
+                }
+                case PRESENT: {
+                    final ByteBuffer value = clusterValue.getData();
+                    final ByteBuffer duplicate = value.duplicate();
+                    final byte[] body = new byte[duplicate.remaining()];
+                    duplicate.get(body);
+                    result = new Response(Response.OK, body);
+                    if(proxy) {
+                        result.addHeader(TIMESTAMP_HEADER + clusterValue.getTimestamp());
+                    }
+                    return result;
+                }
+                case ABSENT:{
+                    return new Response(Response.NOT_FOUND, Response.EMPTY);
+                }
+                default:
+                    throw new IllegalArgumentException("Wrong input data!");
             }
         }
     }
