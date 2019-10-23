@@ -35,7 +35,7 @@ import java.util.Set;
  * @author Vadim Tsesko
  */
 public final class Cluster {
-    private static final int[] PORTS = {8083, 8084, 8085};
+    private static final int[] PORTS = {8081, 8082, 8083};
     private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private Cluster() {

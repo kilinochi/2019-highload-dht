@@ -75,7 +75,7 @@ public final class StorageSession extends HttpSession {
                     try {
                         server.handleRequest(handling, this);
                     } catch (IOException e) {
-                        logger.info("Error" + e.getMessage());
+                        logger.info("Error {}", e.getMessage());
                     }
                 }
             }

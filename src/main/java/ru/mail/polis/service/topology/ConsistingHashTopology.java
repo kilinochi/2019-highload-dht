@@ -10,7 +10,11 @@ import ru.mail.polis.service.topology.node.VirtualNode;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.google.common.base.Charsets.UTF_8;
 
@@ -26,18 +30,16 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     /**
      * Create topology based on Consisting hashing.
      * @param nodes is all nodes in cluster
-     * @param node is current node.
-     * @param virtualNodeCount  is virtual node count in ring.
+     * @param me is current node.
+     * @param virtualNodeCount  is virtual me count in ring.
      */
     ConsistingHashTopology(@NotNull final Set<ServiceNode> nodes,
-                           @NotNull final ServiceNode node,
+                           @NotNull final ServiceNode me,
                            final long virtualNodeCount) {
-        this.me = node;
+        this.me = me;
         this.nodes = nodes;
         this.hashFunction = new MD5Hash();
-        for(final ServiceNode serviceNode : nodes) {
-            addNode(serviceNode, virtualNodeCount);
-        }
+        nodes.forEach(node->addNode(node, virtualNodeCount));
     }
 
     private void addNode(@NotNull final ServiceNode serviceNode,
@@ -62,11 +64,6 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
         return replicas;
     }
 
-    private SortedMap<Long, VirtualNode> tailMap(@NotNull final ByteBuffer key) {
-        Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
-        return ring.tailMap(hashVal);
-    }
-
     @Override
     public boolean isMe(@NotNull final ServiceNode node) {
         return me.key().equals(node.key());
@@ -75,7 +72,8 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     @NotNull
     @Override
     public ServiceNode primaryFor(@NotNull final ByteBuffer key) {
-        final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
+        final Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
+        final SortedMap<Long, VirtualNode> tailMap = ring.tailMap(hashVal);
         final Long nodeHashVal;
         if(tailMap.isEmpty()) {
             nodeHashVal = ring.firstKey();
@@ -91,24 +89,8 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
         return nodes;
     }
 
-    @Override
-    public long size() {
-        return nodes.size();
-    }
-
-    @NotNull
-    @Override
-    public ServiceNode[] replicas(@NotNull final ByteBuffer key) {
-        final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
-        return tailMap.values()
-                .stream()
-                .map(VirtualNode::getServiceNode)
-                .distinct()
-                .sorted()
-                .toArray(ServiceNode[]::new);
-    }
-
     private static final class MD5Hash implements HashFunction {
+        private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
         private MessageDigest messageDigest;
 
@@ -116,24 +98,29 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
             try {
                 messageDigest = MessageDigest.getInstance("MD5");
             } catch (NoSuchAlgorithmException e) {
-                logger.error("Exception : " + e.getMessage());
+                logger.error("Exception : {}", e.getMessage());
             }
         }
 
         @Override
         public long hash(@NotNull final ByteBuffer key) {
-            messageDigest.reset();
-            final ByteBuffer duplicate = key.duplicate();
-            final byte[] bytes = new byte[duplicate.remaining()];
-            key.get(bytes);
-            messageDigest.update(bytes);
-            final byte[] digest = messageDigest.digest();
-            long hash = 0;
-            for(int i = 0; i < 4; i++) {
-                hash <<= 8;
-                hash |= digest[i];
+            lock.readLock().lock();
+            try {
+                messageDigest.reset();
+                final ByteBuffer duplicate = key.duplicate();
+                final byte[] bytes = new byte[duplicate.remaining()];
+                key.get(bytes);
+                messageDigest.update(bytes);
+                final byte[] digest = messageDigest.digest();
+                long hash = 0;
+                for (int i = 0; i < 4; i++) {
+                    hash <<= 8;
+                    hash |= digest[i];
+                }
+                return hash;
+            } finally {
+                lock.readLock().unlock();
             }
-            return hash;
         }
     }
 }

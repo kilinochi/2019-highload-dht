@@ -1,16 +1,16 @@
 package ru.mail.polis.dao.storage.table;
 
-import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.cell.Cell;
 
 import java.util.Iterator;
 
 public final class FlushTable {
     private final long generation;
-    private final Iterator<Cluster> data;
+    private final Iterator<Cell> data;
     private final boolean poisonPills;
 
     FlushTable(final long generation,
-               final Iterator<Cluster> data,
+               final Iterator<Cell> data,
                final boolean poisonPills) {
         this.generation = generation;
         this.data = data;
@@ -21,7 +21,7 @@ public final class FlushTable {
         return generation;
     }
 
-    public Iterator<Cluster> data() {
+    public Iterator<Cell> data() {
         return data;
     }
 

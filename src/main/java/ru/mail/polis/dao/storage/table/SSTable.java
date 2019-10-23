@@ -2,8 +2,8 @@ package ru.mail.polis.dao.storage.table;
 
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.storage.utils.BytesUtils;
-import ru.mail.polis.dao.storage.cluster.Cluster;
-import ru.mail.polis.dao.storage.cluster.ClusterValue;
+import ru.mail.polis.dao.storage.cell.Cell;
+import ru.mail.polis.dao.storage.cell.CellValue;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +31,7 @@ public final class SSTable implements Table {
      * @param to       is the file in the directory in which we want
      *                 write data
      */
-    public static void writeToFile(@NotNull final Iterator<Cluster> clusters, @NotNull final File to)
+    public static void writeToFile(@NotNull final Iterator<Cell> clusters, @NotNull final File to)
             throws IOException {
         try (FileChannel fileChannel = FileChannel.open(
                 to.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
@@ -40,11 +40,11 @@ public final class SSTable implements Table {
             while (clusters.hasNext()) {
                 offsets.add(offset);
 
-                final Cluster cluster = clusters.next();
+                final Cell cell = clusters.next();
 
                 // Write Key
-                final ByteBuffer key = cluster.getKey();
-                final int keySize = cluster.getKey().remaining();
+                final ByteBuffer key = cell.getKey();
+                final int keySize = cell.getKey().remaining();
                 fileChannel.write(BytesUtils.fromInt(keySize));
                 offset += Integer.BYTES; // 4 byte
                 final ByteBuffer keyDuplicate = key.duplicate();
@@ -52,19 +52,19 @@ public final class SSTable implements Table {
                 offset += keySize;
 
                 // Value
-                final ClusterValue value = cluster.getClusterValue();
+                final CellValue value = cell.getCellValue();
 
                 // Write Timestamp
-                if (value.getState() == ClusterValue.State.REMOVED) {
-                    fileChannel.write(BytesUtils.fromLong(-cluster.getClusterValue().getTimestamp()));
+                if (value.getState() == CellValue.State.REMOVED) {
+                    fileChannel.write(BytesUtils.fromLong(-cell.getCellValue().getTimestamp()));
                 } else {
-                    fileChannel.write(BytesUtils.fromLong(cluster.getClusterValue().getTimestamp()));
+                    fileChannel.write(BytesUtils.fromLong(cell.getCellValue().getTimestamp()));
                 }
                 offset += Long.BYTES; // 8 byte
 
                 // Write Value Size and Value
 
-                if (value.getState() != ClusterValue.State.REMOVED) {
+                if (value.getState() != CellValue.State.REMOVED) {
                     final ByteBuffer valueData = value.getData();
                     final int valueSize = value.getData().remaining();
                     fileChannel.write(BytesUtils.fromInt(valueSize));
@@ -122,7 +122,7 @@ public final class SSTable implements Table {
      **/
     @NotNull
     @Override
-    public Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
+    public Iterator<Cell> iterator(@NotNull final ByteBuffer from) {
         return new Iterator<>() {
 
             int next = position(from);
@@ -133,7 +133,7 @@ public final class SSTable implements Table {
             }
 
             @Override
-            public Cluster next() {
+            public Cell next() {
                 assert hasNext();
                 return clusterAt(next++);
             }
@@ -192,7 +192,7 @@ public final class SSTable implements Table {
         return key.slice();
     }
 
-    private Cluster clusterAt(final int i) {
+    private Cell clusterAt(final int i) {
         assert 0 <= i && i < rows;
         long offset = offsets.get(i);
         assert offset <= Integer.MAX_VALUE;
@@ -210,8 +210,8 @@ public final class SSTable implements Table {
         offset += Long.BYTES;
 
         if (timeStamp < 0) {
-            return Cluster.of(key.slice(),
-                    new ClusterValue(null, ClusterValue.State.REMOVED , -timeStamp),
+            return Cell.of(key.slice(),
+                    new CellValue(null, CellValue.State.REMOVED , -timeStamp),
                     currentGeneration);
         } else {
             final int valueSize = clusters.getInt((int) offset);
@@ -221,9 +221,9 @@ public final class SSTable implements Table {
             value.limit(value.position() + valueSize)
                     .position((int) offset)
                     .limit((int) (offset + valueSize));
-            return Cluster.of(key.slice(),
-                    new ClusterValue(value.slice(),
-                            ClusterValue.State.PRESENT, timeStamp), currentGeneration);
+            return Cell.of(key.slice(),
+                    new CellValue(value.slice(),
+                            CellValue.State.PRESENT, timeStamp), currentGeneration);
         }
     }
 }

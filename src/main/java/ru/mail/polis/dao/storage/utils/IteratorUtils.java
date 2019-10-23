@@ -3,8 +3,8 @@ package ru.mail.polis.dao.storage.utils;
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
-import ru.mail.polis.dao.storage.cluster.Cluster;
-import ru.mail.polis.dao.storage.cluster.ClusterValue;
+import ru.mail.polis.dao.storage.cell.Cell;
+import ru.mail.polis.dao.storage.cell.CellValue;
 import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.table.Table;
 
@@ -25,11 +25,11 @@ public final class IteratorUtils {
      * @param tables is collection witch collapse theirs iters with table
      * @param from is key from we get data
      * */
-    public static Iterator<Cluster> data(@NotNull final Table table,
-                                         @NotNull final NavigableMap<Long, SSTable> tables,
-                                         @NotNull final ByteBuffer from) {
-        final List<Iterator<Cluster>> list = compose(table, tables, from);
-        final Iterator<Cluster> clusterIterator = collapseEquals(list);
+    public static Iterator<Cell> data(@NotNull final Table table,
+                                      @NotNull final NavigableMap<Long, SSTable> tables,
+                                      @NotNull final ByteBuffer from) {
+        final List<Iterator<Cell>> list = compose(table, tables, from);
+        final Iterator<Cell> clusterIterator = collapseEquals(list);
         return filter(clusterIterator);
     }
 
@@ -39,11 +39,11 @@ public final class IteratorUtils {
      * @param ssTables is other ssTables from witch we should be get Iterators by key
      * @param from is key from witch we should be get data
      * */
-    private static List<Iterator<Cluster>> compose(
+    private static List<Iterator<Cell>> compose(
             @NotNull final Table table,
             @NotNull final NavigableMap<Long, SSTable> ssTables,
             @NotNull final ByteBuffer from){
-        final List<Iterator<Cluster>> list = new ArrayList<>();
+        final List<Iterator<Cell>> list = new ArrayList<>();
         for (final Table fromOther : ssTables.values()) {
             list.add(fromOther.iterator(from));
         }
@@ -55,19 +55,19 @@ public final class IteratorUtils {
      * Collapse equals iterators.
      * @param data is iterators witch we must be collapse
      * */
-    private static Iterator<Cluster> collapseEquals(@NotNull final List<Iterator<Cluster>> data) {
-        return Iters.collapseEquals(Iterators.mergeSorted(data, Cluster.COMPARATOR), Cluster::getKey);
+    private static Iterator<Cell> collapseEquals(@NotNull final List<Iterator<Cell>> data) {
+        return Iters.collapseEquals(Iterators.mergeSorted(data, Cell.COMPARATOR), Cell::getKey);
     }
     
     /**
      * Filter and get only alive Clusters.
      * @param clusters is data which we should be filtered.
      */
-    private static Iterator<Cluster> filter(@NotNull final Iterator<Cluster> clusters) {
+    private static Iterator<Cell> filter(@NotNull final Iterator<Cell> clusters) {
         return Iterators.filter(
                 clusters, cluster -> {
                     assert cluster != null;
-                    return cluster.getClusterValue().getState() != ClusterValue.State.REMOVED;
+                    return cluster.getCellValue().getState() != CellValue.State.REMOVED;
                 }
         );
     }
