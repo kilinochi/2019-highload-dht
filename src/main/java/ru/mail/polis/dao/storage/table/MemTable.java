@@ -4,8 +4,8 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.dao.storage.cluster.Cluster;
-import ru.mail.polis.dao.storage.cluster.ClusterValue;
+import ru.mail.polis.dao.storage.cell.Cell;
+import ru.mail.polis.dao.storage.cell.CellValue;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.nio.ByteBuffer;
@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicLong;
 @ThreadSafe
 public final class MemTable implements Table {
 
-    private final NavigableMap<ByteBuffer, ClusterValue> storage = new ConcurrentSkipListMap<>();
-    private final NavigableMap<ByteBuffer, ClusterValue> unmodifiable = Collections.unmodifiableNavigableMap(storage);
+    private final NavigableMap<ByteBuffer, CellValue> storage = new ConcurrentSkipListMap<>();
+    private final NavigableMap<ByteBuffer, CellValue> unmodifiable = Collections.unmodifiableNavigableMap(storage);
     private final AtomicLong generation = new AtomicLong();
     private final AtomicLong tableSizeInBytes = new AtomicLong();
 
@@ -30,24 +30,21 @@ public final class MemTable implements Table {
 
     /**
      * Get data as Iterator from in-memory storage by key.
-     *
      * @param from is the label which we can find data
      */
     @NotNull
     @Override
-    public final Iterator<Cluster> iterator(@NotNull final ByteBuffer from) {
-        final Iterator<Cluster> value = Iterators.transform(unmodifiable.tailMap(from)
+    public final Iterator<Cell> iterator(@NotNull final ByteBuffer from) {
+        return Iterators.transform(unmodifiable.tailMap(from)
                         .entrySet()
                         .iterator(),
-                new Function<Map.Entry<ByteBuffer, ClusterValue>, Cluster>() {
+                new Function<Map.Entry<ByteBuffer, CellValue>, Cell>() {
                     @NotNull
                     @Override
-                    public Cluster apply(Map.@Nullable Entry<ByteBuffer, ClusterValue> input) {
-                        return Cluster.of(input.getKey(), input.getValue(), generation.get());
+                    public Cell apply(Map.@Nullable Entry<ByteBuffer, CellValue> input) {
+                        return Cell.of(input.getKey(), input.getValue(), generation.get());
                     }
                 });
-
-        return value;
     }
 
     /**
@@ -58,11 +55,11 @@ public final class MemTable implements Table {
      */
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
-        final ClusterValue prev = storage.put(key, ClusterValue.of(value));
+        final CellValue prev = storage.put(key, CellValue.of(value));
 
         if (prev == null) {
             tableSizeInBytes.addAndGet(key.remaining() + value.remaining());
-        } else if (prev.getState() == ClusterValue.State.REMOVED) {
+        } else if (prev.getState() == CellValue.State.REMOVED) {
             tableSizeInBytes.addAndGet(value.remaining());
         } else {
             tableSizeInBytes.addAndGet(value.remaining() - prev.getData().remaining());
@@ -77,10 +74,10 @@ public final class MemTable implements Table {
      */
     @Override
     public void remove(@NotNull final ByteBuffer key) {
-        final ClusterValue prev = storage.put(key, ClusterValue.deadCluster());
+        final CellValue prev = storage.put(key, CellValue.deadCluster());
         if (prev == null) {
             tableSizeInBytes.addAndGet(key.remaining());
-        } else if (prev.getState() != ClusterValue.State.REMOVED) {
+        } else if (prev.getState() != CellValue.State.REMOVED) {
             tableSizeInBytes.addAndGet(-prev.getData().remaining());
         }
     }

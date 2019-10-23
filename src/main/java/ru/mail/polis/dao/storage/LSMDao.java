@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.table.FlushTable;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
@@ -82,13 +82,13 @@ public final class LSMDao implements DAO {
     @NotNull
     @Override
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
-        return Iterators.transform(clusterIterator(from), cluster -> {
+        return Iterators.transform(cellIterator(from), cluster -> {
             assert cluster != null;
-            return Record.of(cluster.getKey(), cluster.getClusterValue().getData());
+            return Record.of(cluster.getKey(), cluster.getCellValue().getData());
         });
     }
 
-    private Iterator<Cluster> clusterIterator(@NotNull final ByteBuffer from) {
+    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) {
         return IteratorUtils.data(memoryTablePool, ssTables, from);
     }
 
@@ -118,7 +118,7 @@ public final class LSMDao implements DAO {
     }
 
     private void flush(final long currentGeneration,
-                       @NotNull final Iterator<Cluster> data) throws IOException {
+                       @NotNull final Iterator<Cell> data) throws IOException {
         if (data.hasNext()) {
             final File sstable = new File(directory, FILE_NAME + currentGeneration + SUFFIX_DAT);
             SSTable.writeToFile(data, sstable);
@@ -134,7 +134,7 @@ public final class LSMDao implements DAO {
                 FlushTable flushTable;
                 try {
                     flushTable = memoryTablePool.tableToFlush();
-                    final Iterator<Cluster> data = flushTable.data();
+                    final Iterator<Cell> data = flushTable.data();
                     final long currentGeneration = flushTable.getGeneration();
                     poisonReceived = flushTable.isPoisonPills();
                     flush(currentGeneration, data);
@@ -142,7 +142,7 @@ public final class LSMDao implements DAO {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } catch (IOException e) {
-                    logger.info("IOError: " + e.getMessage());
+                    logger.info("IOError: {}", e.getMessage());
                 }
             }
         }

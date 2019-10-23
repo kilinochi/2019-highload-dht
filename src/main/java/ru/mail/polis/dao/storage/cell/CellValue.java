@@ -1,12 +1,12 @@
-package ru.mail.polis.dao.storage.cluster;
+package ru.mail.polis.dao.storage.cell;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
 
-public final class ClusterValue implements Comparable<ClusterValue> {
+public final class CellValue implements Comparable<CellValue> {
 
-    private static final ClusterValue ABSENT = new ClusterValue(null, State.ABSENT, -1);
+    private static final CellValue ABSENT = new CellValue(null, State.ABSENT, -1);
 
     private final ByteBuffer data;
     private final long timestamp;
@@ -19,9 +19,9 @@ public final class ClusterValue implements Comparable<ClusterValue> {
      * @param state is state of current Value.
      * @param timestamp is time witch this value is written
      */
-    public ClusterValue(final ByteBuffer data,
-                        @NotNull final State state,
-                        final long timestamp) {
+    public CellValue(final ByteBuffer data,
+                     @NotNull final State state,
+                     final long timestamp) {
         this.data = data;
         this.state = state;
         this.timestamp = timestamp;
@@ -31,8 +31,8 @@ public final class ClusterValue implements Comparable<ClusterValue> {
      * Alive cluster value (cell) in storage.
      * @param data is data of value
      */
-    public static ClusterValue of(@NotNull final ByteBuffer data) {
-        return new ClusterValue(data.duplicate(),
+    public static CellValue of(@NotNull final ByteBuffer data) {
+        return new CellValue(data.duplicate(),
                 State.PRESENT,
                 System.currentTimeMillis());
     }
@@ -40,8 +40,8 @@ public final class ClusterValue implements Comparable<ClusterValue> {
     /**
      * Removed value (cell) in storage.
      */
-    public static ClusterValue deadCluster() {
-        return new ClusterValue(
+    public static CellValue deadCluster() {
+        return new CellValue(
                 null,
                 State.REMOVED,
                 System.currentTimeMillis());
@@ -52,10 +52,10 @@ public final class ClusterValue implements Comparable<ClusterValue> {
      * @param data us data in this value.
      * @param timestamp is timestamp in this value.
      */
-    public static ClusterValue present(
+    public static CellValue present(
             @NotNull final ByteBuffer data,
             final long timestamp) {
-        return new ClusterValue(
+        return new CellValue(
                 data,
                 State.PRESENT,
                 timestamp
@@ -66,8 +66,8 @@ public final class ClusterValue implements Comparable<ClusterValue> {
      * Removed (dead) value in storage.
      * @param timestamp is timestamp of this value.
      */
-    public static ClusterValue removed(final long timestamp) {
-        return new ClusterValue(
+    public static CellValue removed(final long timestamp) {
+        return new CellValue(
                 null,
                 State.REMOVED,
                 timestamp
@@ -87,11 +87,11 @@ public final class ClusterValue implements Comparable<ClusterValue> {
     }
 
     @Override
-    public int compareTo(@NotNull final ClusterValue o) {
+    public int compareTo(@NotNull final CellValue o) {
         return -Long.compare(timestamp, o.timestamp);
     }
 
-    public static ClusterValue absent() {
+    public static CellValue absent() {
         return ABSENT;
     }
 

@@ -4,7 +4,7 @@ import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.LSMDao;
-import ru.mail.polis.dao.storage.cluster.Cluster;
+import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.utils.IteratorUtils;
 
 import java.io.Closeable;
@@ -66,8 +66,8 @@ public final class MemoryTablePool implements Table, Closeable {
 
     @NotNull
     @Override
-    public Iterator<Cluster> iterator(final @NotNull ByteBuffer from) {
-        final Collection<Iterator<Cluster>> iterators;
+    public Iterator<Cell> iterator(final @NotNull ByteBuffer from) {
+        final Collection<Iterator<Cell>> iterators;
         lock.readLock().lock();
         try {
             iterators = new ArrayList<>(pendingToFlushTables.size() + 1);
@@ -78,12 +78,12 @@ public final class MemoryTablePool implements Table, Closeable {
         } finally {
             lock.readLock().unlock();
         }
-        final Iterator<Cluster> merged = Iterators.mergeSorted(iterators, Cluster.COMPARATOR);
-        final Iterator<Cluster> withoutEquals = Iters.collapseEquals(merged, Cluster::getKey);
+        final Iterator<Cell> merged = Iterators.mergeSorted(iterators, Cell.COMPARATOR);
+        final Iterator<Cell> withoutEquals = Iters.collapseEquals(merged, Cell::getKey);
 
         return Iterators.filter(
                 withoutEquals,
-                input -> input.getClusterValue().getData() != null
+                input -> input.getCellValue().getData() != null
         );
     }
 
@@ -159,7 +159,7 @@ public final class MemoryTablePool implements Table, Closeable {
     public void compact(@NotNull final NavigableMap<Long, SSTable> sstables,
                         @NotNull final File directory,
                         final long generation) throws IOException {
-        final Iterator<Cluster> data;
+        final Iterator<Cell> data;
         lock.readLock().lock();
         try {
             data = IteratorUtils.data(currentMemoryTable, sstables, LSMDao.EMPTY_BUFFER);
@@ -169,7 +169,7 @@ public final class MemoryTablePool implements Table, Closeable {
         compaction(data, directory, sstables ,generation);
     }
 
-    private void compaction(@NotNull final Iterator<Cluster> data,
+    private void compaction(@NotNull final Iterator<Cell> data,
                             @NotNull final File directory,
                             @NotNull final NavigableMap<Long, SSTable> ssTables,
                             final long generation) throws IOException {
