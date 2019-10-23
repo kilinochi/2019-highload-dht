@@ -246,7 +246,7 @@ public final class RestService extends HttpServer implements Service {
             return new Response(Response.CREATED, Response.EMPTY);
         }
 
-        final String[] nodes =
+
     }
 
     private Response delete(
