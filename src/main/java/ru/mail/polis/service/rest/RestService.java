@@ -19,21 +19,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Map;
+import java.util.Iterator;
+import java.util.HashMap;
+import java.util.NoSuchElementException;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
+import ru.mail.polis.service.topology.node.ServiceNode;
 
 public final class RestService extends HttpServer implements Service {
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
 
-    private final Topology<String> nodes;
+    private final Topology<ServiceNode> topology;
     private final DAO dao;
     private final Map<String, HttpClient> pool;
 
@@ -41,23 +42,25 @@ public final class RestService extends HttpServer implements Service {
      * Create new instance of RestService for interaction with database.
      * @param config in config for server
      * @param dao is dao for interaction with database
-     * @param nodes all nodes in cluster
+     * @param topology all nodes in cluster
      */
     private RestService(
             @NotNull final HttpServerConfig config,
             @NotNull final DAO dao,
-            @NotNull final Topology<String> nodes) throws IOException {
+            @NotNull final Topology<ServiceNode> topology) throws IOException {
         super(config);
         this.dao = dao;
-
-        this.nodes = nodes;
+        this.topology = topology;
         this.pool = new HashMap<>();
-        for(final String node : this.nodes.all()) {
-            if(nodes.isMe(node)) {
+        for(final ServiceNode node : this.topology.all()) {
+            final String host = node.key();
+            if(topology.isMe(node)) {
+                logger.info("We process int host : " + host);
                 continue;
             }
-            assert !pool.containsKey(node);
-            pool.put(node, new HttpClient(new ConnectionString(node + "?timeout=100")));
+            logger.info("We have next host in the pool: " + host);
+            assert !pool.containsKey(node.key());
+            pool.put(host, new HttpClient(new ConnectionString(host + "?timeout=100")));
         }
     }
 
@@ -70,7 +73,7 @@ public final class RestService extends HttpServer implements Service {
     public static RestService create(
             final int port,
             @NotNull final DAO dao,
-            @NotNull final Topology<String> nodes) throws IOException {
+            @NotNull final Topology<ServiceNode> nodes) throws IOException {
         final AcceptorConfig acceptorConfig = new AcceptorConfig();
         acceptorConfig.port = port;
         final HttpServerConfig httpServerConfig = new HttpServerConfig();
@@ -113,6 +116,7 @@ public final class RestService extends HttpServer implements Service {
             @Param("end") final String end,
             @NotNull final Request request,
             @NotNull final HttpSession session) {
+        logger.info("Start with :" + start + " and end with: " + end);
         if (start == null || start.isEmpty()) {
             ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
@@ -150,8 +154,8 @@ public final class RestService extends HttpServer implements Service {
             return;
         }
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
-        final String primary = nodes.primaryFor(key);
-        if(!nodes.isMe(primary)) {
+        final ServiceNode primary = topology.primaryFor(key);
+        if(!topology.isMe(primary)) {
             asyncExecute(session, () -> proxy(primary, request));
             return;
         }
@@ -196,11 +200,12 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private Response proxy(
-            @NotNull final String node,
+            @NotNull final ServiceNode node,
             @NotNull final Request request) throws IOException {
-        assert !nodes.isMe(node);
+        assert !topology.isMe(node);
         try {
-            return pool.get(node).invoke(request);
+            logger.info("We proxy our request to another node: " + node.key());
+            return pool.get(node.key()).invoke(request);
         } catch (InterruptedException | PoolException | HttpException e) {
             throw (IOException) new IOException().initCause(e);
         }
@@ -234,7 +239,8 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private static final class ResponseUtils {
-        private ResponseUtils(){}
+        private ResponseUtils() {
+        }
 
         private static void sendResponse(@NotNull final HttpSession session,
                                          @NotNull final Response response) {

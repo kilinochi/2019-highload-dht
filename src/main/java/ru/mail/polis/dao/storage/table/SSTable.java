@@ -55,7 +55,7 @@ public final class SSTable implements Table {
                 final ClusterValue value = cluster.getClusterValue();
 
                 // Write Timestamp
-                if (value.isTombstone()) {
+                if (value.getState() == ClusterValue.State.REMOVED) {
                     fileChannel.write(BytesUtils.fromLong(-cluster.getClusterValue().getTimestamp()));
                 } else {
                     fileChannel.write(BytesUtils.fromLong(cluster.getClusterValue().getTimestamp()));
@@ -64,7 +64,7 @@ public final class SSTable implements Table {
 
                 // Write Value Size and Value
 
-                if (!value.isTombstone()) {
+                if (value.getState() != ClusterValue.State.REMOVED) {
                     final ByteBuffer valueData = value.getData();
                     final int valueSize = value.getData().remaining();
                     fileChannel.write(BytesUtils.fromInt(valueSize));
@@ -210,7 +210,7 @@ public final class SSTable implements Table {
         offset += Long.BYTES;
 
         if (timeStamp < 0) {
-            return Cluster.of(key.slice(), new ClusterValue(null, -timeStamp, true), currentGeneration);
+            return Cluster.of(key.slice(), new ClusterValue(null,  ClusterValue.State.REMOVED , -timeStamp), currentGeneration);
         } else {
             final int valueSize = clusters.getInt((int) offset);
             offset += Integer.BYTES;
@@ -219,7 +219,7 @@ public final class SSTable implements Table {
             value.limit(value.position() + valueSize)
                     .position((int) offset)
                     .limit((int) (offset + valueSize));
-            return Cluster.of(key.slice(), new ClusterValue(value.slice(), timeStamp, false), currentGeneration);
+            return Cluster.of(key.slice(), new ClusterValue(value.slice(), ClusterValue.State.PRESENT  ,timeStamp), currentGeneration);
         }
     }
 }
