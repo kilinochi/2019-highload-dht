@@ -70,22 +70,22 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     }
 
     @Override
-    public long size() {
+    public int size() {
         return nodes.size();
     }
 
     @NotNull
     @Override
     public ServiceNode[] replicas(@NotNull final ByteBuffer key,
-                                  final long count) {
-        final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
-        return tailMap.values()
-                .stream()
-                .map(VirtualNode::getServiceNode)
-                .distinct()
-                .sorted()
-                .limit(count)
-                .toArray(ServiceNode[]::new);
+                                  final int count) {
+        final ServiceNode[] res = new ServiceNode[count];
+        final ServiceNode[] nodes = this.nodes.toArray(new ServiceNode[0]);
+        long i = (hashFunction.hash(key.asReadOnlyBuffer()) & Long.MAX_VALUE) % nodes.length;
+        for(int j = 0; j < count; j++) {
+            res[j] = nodes[(int) i];
+            i = (i + 1) % nodes.length;
+        }
+        return res;
     }
 
     @Override

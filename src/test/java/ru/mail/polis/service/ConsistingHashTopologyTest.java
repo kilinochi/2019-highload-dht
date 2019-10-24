@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class ConsistingHashTopologyTest {
     private static final Logger logger = LoggerFactory.getLogger(ConsistingHashTopologyTest.class);
 
-    private static final int KEYS_COUNT = 1000;
-    private static final long VIRTUAL_NODE_COUNT = 20;
+    private static final int KEYS_COUNT = 100;
+    private static final long VIRTUAL_NODE_COUNT = 40;
     private static Set<ServiceNode> NODES = null;
     private static ServiceNode ME = null;
     static {
@@ -65,8 +65,20 @@ final class ConsistingHashTopologyTest {
             final int count = value;
             final long delta = Math.abs(EXPECTED_KEYS_PER_NODE - count);
             assertTrue(delta < KEYS_DELTA, "Node keys counter is out of range on node "
-                    + node + ", delta = " + delta);
+                    + node + ", delta = " + delta + ", but expected: " + KEYS_DELTA);
         });
+    }
+
+    @Test
+    void replicasTest() {
+        final Topology<ServiceNode> topology = createTopology();
+        final int countNodesForReplicas = 5;
+        for(int i = 0; i < KEYS_COUNT; i++) {
+            final String key = "superKey: " + i;
+            final ServiceNode[] serviceNodes = topology.replicas(ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)), countNodesForReplicas);
+            logger.info("iteration is {}", i);
+            assertEquals(countNodesForReplicas, serviceNodes.length);
+        }
     }
 
     private static Topology<ServiceNode> createTopology() {

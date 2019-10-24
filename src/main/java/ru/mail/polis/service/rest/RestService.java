@@ -20,7 +20,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Collection;
+import java.util.NoSuchElementException;
+import java.util.Comparator;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
@@ -60,7 +67,7 @@ public final class RestService extends HttpServer implements Service {
         this.pool = new HashMap<>();
         this.defaultRF = new RF(nodes.size() / 2 + 1 , nodes.size());
         for(final ServiceNode node : this.nodes.all()) {
-            if(!node.equals(me)) {
+            if(!node.equals(this.me)) {
                 final String url = node.key();
                 assert !pool.containsKey(node.key());
                 pool.put(url, new HttpClient(new ConnectionString(url + "?timeout=100")));
@@ -183,12 +190,12 @@ public final class RestService extends HttpServer implements Service {
             asyncExecute(session, () -> proxy(primary, request));
             return;
         }
+        final RF finalRf = rf;
         switch (request.getMethod()) {
             case Request.METHOD_GET:
-                asyncExecute(session, () -> get(id));
+                asyncExecute(session, () -> get(id, finalRf, proxied));
                 break;
             case Request.METHOD_PUT:
-                final RF finalRf = rf;
                 asyncExecute(session, () -> upsert(id, request.getBody(), finalRf, proxied));
                 break;
             case Request.METHOD_DELETE:
@@ -279,13 +286,37 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private Response get(
-            @NotNull final String id) throws IOException, NoSuchElementException {
-        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
-        final ByteBuffer value = dao.get(key);
-        final ByteBuffer duplicate = value.duplicate();
-        final byte[] body = new byte[duplicate.remaining()];
-        duplicate.get(body);
-        return new Response(Response.OK, body);
+            @NotNull final String id,
+            @NotNull final RF rf,
+            final boolean proxy) throws IOException, NoSuchElementException {
+        try {
+            if (proxy) {
+                return ResponseUtils.from(getCells(id.getBytes(Charsets.UTF_8)), proxy);
+            }
+
+            final ServiceNode[] nodes = this.nodes.replicas(ByteBuffer.wrap(id.getBytes(Charsets.UTF_8)), rf.from);
+            final List<CellValue> responses = new ArrayList<>();
+
+            int ack = 0;
+            for (final ServiceNode node : nodes) {
+                if (node.equals(me)) {
+                    responses.add(getCells(id.getBytes(Charsets.UTF_8)));
+                    ack++;
+                } else {
+                    final Response response = pool.get(node.key())
+                            .get("v0/entity?id=" + id, PROXY_HEADER);
+                    ack++;
+                    responses.add(from(response));
+                }
+            }
+            if (ack >= rf.ask) {
+                return ResponseUtils.from(merge(responses), proxy);
+            } else {
+                return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+            }
+        } catch (InterruptedException | PoolException | HttpException e) {
+            throw (IOException) new IOException().initCause(e);
+        }
     }
 
     @NotNull
@@ -317,7 +348,7 @@ public final class RestService extends HttpServer implements Service {
         }
     }
 
-    private CellValue get(final byte[] key) throws IOException {
+    private CellValue getCells(final byte[] key) throws IOException {
         final ByteBuffer k = ByteBuffer.wrap(key);
         final Iterator<Cell> cells = dao.latestIterator(k);
         if (!cells.hasNext()) {
@@ -391,10 +422,10 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private static final class RF {
-        private final long ask;
-        private final long from;
+        private final int ask;
+        private final int from;
 
-        private RF(final long ask, final long from) {
+        private RF(final int ask, final int from) {
             this.ask = ask;
             this.from = from;
         }

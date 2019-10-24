@@ -49,13 +49,13 @@ public final class BasicTopology implements Topology<ServiceNode> {
     }
 
     @Override
-    public long size() {
+    public int size() {
         return nodes.length;
     }
 
     @NotNull
     @Override
-    public ServiceNode[] replicas(@NotNull final ByteBuffer key, final long count) {
+    public ServiceNode[] replicas(@NotNull final ByteBuffer key, final int count) {
         return new ServiceNode[0];
     }
 }
