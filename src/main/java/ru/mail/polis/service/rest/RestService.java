@@ -263,7 +263,7 @@ public final class RestService extends HttpServer implements Service {
                    ask++;
                } else {
                    final Response response = pool.get(node.key()).put(
-                           "v0/entity?id=" + id, value, PROXY_HEADER);
+                           "/v0/entity?id=" + id, value, PROXY_HEADER);
                    if (response.getStatus() == 201) {
                        ask++;
                    }
@@ -306,7 +306,7 @@ public final class RestService extends HttpServer implements Service {
                     ack++;
                 } else {
                     final Response response = pool.get(node.key())
-                            .get("v0/entity?id=" + id, PROXY_HEADER);
+                            .get("/v0/entity?id=" + id, PROXY_HEADER);
                     ack++;
                     responses.add(from(response));
                 }
