@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class ConsistingHashTopologyTest {
     private static final Logger logger = LoggerFactory.getLogger(ConsistingHashTopologyTest.class);
 
-    private static final int KEYS_COUNT = 100;
-    private static final long VIRTUAL_NODE_COUNT = 40;
+    private static final int KEYS_COUNT = 10000;
+    private static final long VIRTUAL_NODE_COUNT = 100;
     private static Set<ServiceNode> NODES = null;
     private static ServiceNode ME = null;
     static {
@@ -29,7 +29,8 @@ final class ConsistingHashTopologyTest {
             ME = new ServiceNode(new URL("http://localhost:8097"));
             NODES = Set.of(
                         new ServiceNode(new URL("http://localhost:8098")),
-                        new ServiceNode(new URL("http://localhost:8099")));
+                        new ServiceNode(new URL("http://localhost:8099")),
+                        new ServiceNode(new URL("http://localhost:8100")));
         } catch (MalformedURLException e) {
             logger.error("Error while create URL {} ", e.getMessage());
         }
@@ -37,6 +38,7 @@ final class ConsistingHashTopologyTest {
 
     private static final long EXPECTED_KEYS_PER_NODE = KEYS_COUNT / NODES.size();
     private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.15);
+    private static final int COUNT_NODES_REPLICAS = NODES.size() - 2;
 
 
     @Test
@@ -72,12 +74,11 @@ final class ConsistingHashTopologyTest {
     @Test
     void replicasTest() {
         final Topology<ServiceNode> topology = createTopology();
-        final int countNodesForReplicas = 2;
         for(int i = 0; i < KEYS_COUNT; i++) {
             final String key = "superKey: " + i;
-            final ServiceNode[] serviceNodes = topology.replicas(countNodesForReplicas, ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)));
+            final ServiceNode[] serviceNodes = topology.replicas(COUNT_NODES_REPLICAS, ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)));
             logger.info("iteration is {}", i);
-            assertEquals(countNodesForReplicas, serviceNodes.length);
+            assertEquals(COUNT_NODES_REPLICAS, serviceNodes.length);
         }
     }
     private static Topology<ServiceNode> createTopology() {

@@ -78,20 +78,26 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     @Override
     public ServiceNode[] replicas(final int count,
                                   @NotNull final ByteBuffer key) {
-        final SortedMap<Long, VirtualNode> res;
         final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
-        if(tailMap.isEmpty() || tailMap.values().size() < count) {
-            res = ring;
+        final ServiceNode[] nodesTailMap =
+                tailMap.values()
+                        .stream()
+                        .map(VirtualNode::getServiceNode)
+                        .distinct()
+                        .sorted()
+                        .limit(count)
+                        .toArray(ServiceNode[]::new);
+        if(nodesTailMap.length < count) {
+            return ring
+                    .values()
+                    .stream()
+                    .map(VirtualNode::getServiceNode)
+                    .distinct().limit(count)
+                    .sorted()
+                    .toArray(ServiceNode[]::new);
         } else {
-            res = tailMap;
+            return nodesTailMap;
         }
-        return res.values()
-                .stream()
-                .map(VirtualNode::getServiceNode)
-                .distinct()
-                .sorted()
-                .limit(count)
-                .toArray(ServiceNode[]::new);
     }
 
     @Override
@@ -143,7 +149,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
                 long hash = 0;
                 for (int i = 0; i < 4; i++) {
                     hash <<= 8;
-                    hash |= digest[i];
+                    hash |= digest[i] & 0xFF;
                 }
                 return hash;
             } finally {
