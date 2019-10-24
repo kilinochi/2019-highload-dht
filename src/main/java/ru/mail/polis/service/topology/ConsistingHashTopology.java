@@ -65,7 +65,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     }
 
     private SortedMap<Long, VirtualNode> tailMap(@NotNull final ByteBuffer key) {
-        Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
+        final Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
         return ring.tailMap(hashVal);
     }
 
@@ -76,8 +76,16 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
 
     @NotNull
     @Override
-    public ServiceNode[] replicas(final int count) {
-        return ring.values()
+    public ServiceNode[] replicas(final int count,
+                                  @NotNull final ByteBuffer key) {
+        final SortedMap<Long, VirtualNode> res;
+        final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
+        if(tailMap.isEmpty() || tailMap.values().size() < count) {
+            res = ring;
+        } else {
+            res = tailMap;
+        }
+        return res.values()
                 .stream()
                 .map(VirtualNode::getServiceNode)
                 .distinct()

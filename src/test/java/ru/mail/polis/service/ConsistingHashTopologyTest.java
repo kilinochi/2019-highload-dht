@@ -69,6 +69,17 @@ final class ConsistingHashTopologyTest {
         });
     }
 
+    @Test
+    void replicasTest() {
+        final Topology<ServiceNode> topology = createTopology();
+        final int countNodesForReplicas = 2;
+        for(int i = 0; i < KEYS_COUNT; i++) {
+            final String key = "superKey: " + i;
+            final ServiceNode[] serviceNodes = topology.replicas(countNodesForReplicas, ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)));
+            logger.info("iteration is {}", i);
+            assertEquals(countNodesForReplicas, serviceNodes.length);
+        }
+    }
     private static Topology<ServiceNode> createTopology() {
         return Topology.consistingHashTopology(NODES, ME, VIRTUAL_NODE_COUNT);
     }

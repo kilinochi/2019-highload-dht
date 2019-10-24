@@ -255,7 +255,7 @@ public final class RestService extends HttpServer implements Service {
                dao.upsert(key, ByteBuffer.wrap(value));
                return new Response(Response.CREATED, Response.EMPTY);
            }
-           final ServiceNode[] nodes = this.nodes.replicas(rf.from);
+           final ServiceNode[] nodes = this.nodes.replicas(rf.from, key);
            int ask = 0;
            for (final ServiceNode node : nodes) {
                if (node.equals(me)) {
@@ -290,12 +290,13 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final String id,
             @NotNull final RF rf,
             final boolean proxy) throws IOException, NoSuchElementException {
+        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
         try {
             if (proxy) {
                 return ResponseUtils.from(getCells(id.getBytes(Charsets.UTF_8)), proxy);
             }
 
-            final ServiceNode[] nodes = this.nodes.replicas(rf.from);
+            final ServiceNode[] nodes = this.nodes.replicas(rf.from, key);
             final List<CellValue> responses = new ArrayList<>();
 
             int ack = 0;
