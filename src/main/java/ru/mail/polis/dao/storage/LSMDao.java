@@ -6,12 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.table.FlushTable;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
-import ru.mail.polis.dao.storage.table.Table;
 import ru.mail.polis.dao.storage.utils.GenerationUtils;
 import ru.mail.polis.dao.storage.utils.IteratorUtils;
 

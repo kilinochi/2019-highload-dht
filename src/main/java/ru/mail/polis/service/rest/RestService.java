@@ -125,7 +125,7 @@ public final class RestService extends HttpServer implements Service {
             @Param("end") final String end,
             @NotNull final Request request,
             @NotNull final HttpSession session) {
-        logger.info("Start with :" + start + " and end with: " + end);
+        logger.info("Start with : {} and end with : {} ", start, end);
         if (start == null || start.isEmpty()) {
             ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
@@ -143,7 +143,7 @@ public final class RestService extends HttpServer implements Service {
                     end == null ? null : ByteBuffer.wrap(end.getBytes(Charsets.UTF_8)));
             ((StorageSession) session).stream(recordIterator);
         } catch (IOException e) {
-            logger.error("Something wrong while get range of value " + e.getMessage());
+            logger.error("Something wrong while get range of value {}", e.getMessage());
         }
     }
 
@@ -195,7 +195,7 @@ public final class RestService extends HttpServer implements Service {
                 asyncExecute(session, () -> delete(id));
                 break;
             default:
-                logger.warn("Not supported HTTP-method: " + request.getMethod());
+                logger.warn("Not supported HTTP-method: {}", request.getMethod());
                 ResponseUtils.sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
                 break;
         }
@@ -208,17 +208,17 @@ public final class RestService extends HttpServer implements Service {
             try {
                 ResponseUtils.sendResponse(session, publisher.submit());
             } catch (IOException e) {
-                logger.error("Unable to create response : " + e.getMessage());
+                logger.error("Unable to create response {} ", e.getMessage());
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
                 } catch (IOException ioExecption) {
-                    logger.error("Error while send response " + ioExecption.getMessage());
+                    logger.error("Error while send response {}", ioExecption.getMessage());
                 }
             } catch (NoSuchElementException e) {
                 try {
                     session.sendError(Response.NOT_FOUND, "Not found recourse!");
                 } catch (IOException ex) {
-                    logger.error("Error while send error " + ex.getMessage());
+                    logger.error("Error while send error {}", ex.getMessage());
                 }
             }
         });
@@ -229,7 +229,7 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final Request request) throws IOException {
         assert !nodes.isMe(node);
         try {
-            logger.info("We proxy our request to another node: " + node.key());
+            logger.info("We proxy our request to another node: {}", node.key());
             return pool.get(node.key()).invoke(request);
         } catch (InterruptedException | PoolException | HttpException e) {
             throw (IOException) new IOException().initCause(e);
@@ -240,33 +240,34 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final String id,
             @NotNull final byte[] value,
             @NotNull final RF rf,
-            final boolean isProxy) throws IOException, InterruptedException, HttpException, PoolException {
+            final boolean isProxy) throws IOException {
         final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
-        if(isProxy) {
-            dao.upsert(key, ByteBuffer.wrap(value));
-            return new Response(Response.CREATED, Response.EMPTY);
-        }
-
-        final ServiceNode[] nodes = this.nodes.replicas(key, rf.from);
-        int ask = 0;
-        for(final ServiceNode node : nodes) {
-            if(node.equals(me)) {
-                dao.upsert(key, ByteBuffer.wrap(value));
-                ask++;
-            } else {
-                final Response response = pool.get(node.key()).put(
-                        "v0/entity?id=" + id,
-                        value,
-                        PROXY_HEADER);
-                    if(response.getStatus() == 201) {
-                        ask++;
-                    }
-            }
-        }
-        if(ask >= rf.ask) {
-            return new Response(Response.ACCEPTED, Response.EMPTY);
-        } else {
-            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+        try {
+           if (isProxy) {
+               dao.upsert(key, ByteBuffer.wrap(value));
+               return new Response(Response.CREATED, Response.EMPTY);
+           }
+           final ServiceNode[] nodes = this.nodes.replicas(key, rf.from);
+           int ask = 0;
+           for (final ServiceNode node : nodes) {
+               if (node.equals(me)) {
+                   dao.upsert(key, ByteBuffer.wrap(value));
+                   ask++;
+               } else {
+                   final Response response = pool.get(node.key()).put(
+                           "v0/entity?id=" + id, value, PROXY_HEADER);
+                   if (response.getStatus() == 201) {
+                       ask++;
+                   }
+               }
+           }
+           if (ask >= rf.ask) {
+               return new Response(Response.ACCEPTED, Response.EMPTY);
+           } else {
+               return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+           }
+        } catch (InterruptedException | PoolException | HttpException e) {
+            throw (IOException) new IOException().initCause(e);
         }
     }
 
@@ -352,7 +353,7 @@ public final class RestService extends HttpServer implements Service {
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
                 } catch (IOException ex) {
-                    logger.error("Error while send error : " + ex.getMessage());
+                    logger.error("Error while send error {} ", ex.getMessage());
                 }
             }
         }
