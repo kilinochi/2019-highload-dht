@@ -6,10 +6,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.table.FlushTable;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
+import ru.mail.polis.dao.storage.table.Table;
 import ru.mail.polis.dao.storage.utils.GenerationUtils;
 import ru.mail.polis.dao.storage.utils.IteratorUtils;
 
@@ -23,8 +25,9 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.Path;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.NavigableMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
@@ -115,6 +118,13 @@ public final class LSMDao implements DAO {
     @Override
     public void compact() throws IOException {
         memoryTablePool.compact(ssTables, directory, generation);
+    }
+
+    @Override
+    public Iterator<Cell> latestIterator(ByteBuffer from) {
+
+        final List<Iterator<Cell>> compose = IteratorUtils.compose(memoryTablePool, ssTables, from);
+        return IteratorUtils.collapseEquals(compose);
     }
 
     private void flush(final long currentGeneration,

@@ -17,12 +17,19 @@
 package ru.mail.polis.service;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jetbrains.annotations.NotNull;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.service.rest.RestService;
 import ru.mail.polis.service.topology.Topology;
@@ -35,6 +42,7 @@ import ru.mail.polis.service.topology.node.ServiceNode;
  */
 public final class ServiceFactory {
     private static final long MAX_HEAP = 256 * 1024 * 1024;
+    private static final Logger logger = LoggerFactory.getLogger(ServiceFactory.class);
 
     private ServiceFactory() {
         // Not supposed to be instantiated
@@ -61,15 +69,26 @@ public final class ServiceFactory {
             throw new IllegalArgumentException("Port out of range");
         }
 
-        final Set<ServiceNode> serviceNodes = new TreeSet<>();
-        for(final String node : topology) {
-            serviceNodes.add(new ServiceNode(new URL(node)));
-        }
+        final Set<ServiceNode> serviceNodes =
+                topology.stream()
+                            .map(s -> new ServiceNode(createURL(s)))
+                            .sorted()
+                            .collect(Collectors.toCollection(TreeSet::new));
 
         final Topology<ServiceNode> topologyNodes =
                 Topology.consistingHashTopology(
                         serviceNodes,
                         new ServiceNode(new URL("http://localhost:"+port)), 10);
         return RestService.create(port, dao, topologyNodes);
+    }
+
+    private static URL createURL(@NotNull final String s) {
+        URL url = null;
+        try {
+            url = new URL(s);
+        } catch (MalformedURLException e) {
+            logger.error("Error while create url format {}", e.getMessage());
+        }
+        return url;
     }
 }

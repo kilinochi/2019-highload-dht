@@ -30,7 +30,7 @@ public final class IteratorUtils {
                                       @NotNull final ByteBuffer from) {
         final List<Iterator<Cell>> list = compose(table, tables, from);
         final Iterator<Cell> clusterIterator = collapseEquals(list);
-        return filter(clusterIterator);
+        return filterAlive(clusterIterator);
     }
 
     /**
@@ -39,15 +39,15 @@ public final class IteratorUtils {
      * @param ssTables is other ssTables from witch we should be get Iterators by key
      * @param from is key from witch we should be get data
      * */
-    private static List<Iterator<Cell>> compose(
+    public static List<Iterator<Cell>> compose(
             @NotNull final Table table,
             @NotNull final NavigableMap<Long, SSTable> ssTables,
             @NotNull final ByteBuffer from){
         final List<Iterator<Cell>> list = new ArrayList<>();
+        list.add(table.iterator(from));
         for (final Table fromOther : ssTables.values()) {
             list.add(fromOther.iterator(from));
         }
-        list.add(table.iterator(from));
         return list;
     }
 
@@ -55,7 +55,7 @@ public final class IteratorUtils {
      * Collapse equals iterators.
      * @param data is iterators witch we must be collapse
      * */
-    private static Iterator<Cell> collapseEquals(@NotNull final List<Iterator<Cell>> data) {
+    public static Iterator<Cell> collapseEquals(@NotNull final List<Iterator<Cell>> data) {
         return Iters.collapseEquals(Iterators.mergeSorted(data, Cell.COMPARATOR), Cell::getKey);
     }
     
@@ -63,7 +63,7 @@ public final class IteratorUtils {
      * Filter and get only alive Clusters.
      * @param clusters is data which we should be filtered.
      */
-    private static Iterator<Cell> filter(@NotNull final Iterator<Cell> clusters) {
+    public static Iterator<Cell> filterAlive(@NotNull final Iterator<Cell> clusters) {
         return Iterators.filter(
                 clusters, cluster -> {
                     assert cluster != null;

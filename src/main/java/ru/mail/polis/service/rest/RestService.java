@@ -20,16 +20,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Map;
-import java.util.Iterator;
-import java.util.HashMap;
-import java.util.NoSuchElementException;
-import java.util.Comparator;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
@@ -45,7 +40,7 @@ public final class RestService extends HttpServer implements Service {
     private final Topology<ServiceNode> nodes;
     private final DAO dao;
     private final Map<String, HttpClient> pool;
-    private ServiceNode me;
+    private final ServiceNode me;
 
     /**
      * Create new instance of RestService for interaction with database.
@@ -56,22 +51,20 @@ public final class RestService extends HttpServer implements Service {
     private RestService(
             @NotNull final HttpServerConfig config,
             @NotNull final DAO dao,
-            @NotNull final Topology<ServiceNode> nodes) throws IOException {
+            @NotNull final Topology<ServiceNode> nodes,
+            @NotNull final ServiceNode me) throws IOException {
         super(config);
         this.dao = dao;
+        this.me = me;
         this.nodes = nodes;
         this.pool = new HashMap<>();
         this.defaultRF = new RF(nodes.size() / 2 + 1 , nodes.size());
         for(final ServiceNode node : this.nodes.all()) {
-            final String host = node.key();
-            if(nodes.isMe(node)) {
-                logger.info("We process int host : " + host);
-                this.me = node;
-                continue;
+            if(!node.equals(me)) {
+                final String url = node.key();
+                assert !pool.containsKey(node.key());
+                pool.put(url, new HttpClient(new ConnectionString(url + "?timeout=100")));
             }
-            logger.info("We have next host in the pool: " + host);
-            assert !pool.containsKey(node.key());
-            pool.put(host, new HttpClient(new ConnectionString(host + "?timeout=100")));
         }
     }
 
@@ -87,11 +80,16 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final Topology<ServiceNode> nodes) throws IOException {
         final AcceptorConfig acceptorConfig = new AcceptorConfig();
         acceptorConfig.port = port;
+        final ServiceNode me = nodes.all()
+                .stream()
+                .filter(serviceNode -> serviceNode.key()
+                .endsWith(""+port))
+                .findFirst().get();
         final HttpServerConfig httpServerConfig = new HttpServerConfig();
         httpServerConfig.acceptors = new AcceptorConfig[]{acceptorConfig};
         httpServerConfig.minWorkers = Runtime.getRuntime().availableProcessors();
         httpServerConfig.maxWorkers = Runtime.getRuntime().availableProcessors();
-        return new RestService(httpServerConfig, dao, nodes);
+        return new RestService(httpServerConfig, dao, nodes, me);
     }
 
     @Override
@@ -315,6 +313,25 @@ public final class RestService extends HttpServer implements Service {
             }
         } else {
             throw new IOException("IOException while get response from nodes");
+        }
+    }
+
+    private CellValue get(final byte[] key) throws IOException {
+        final ByteBuffer k = ByteBuffer.wrap(key);
+        final Iterator<Cell> cells = dao.latestIterator(k);
+        if (!cells.hasNext()) {
+            return CellValue.absent();
+        }
+
+        final Cell cell = cells.next();
+
+        if (cell.getCellValue().getData() == null) {
+            return CellValue.removed(cell.getCellValue().getTimestamp());
+        } else {
+            final ByteBuffer v = cell.getCellValue().getData();
+            final byte[] buffer = new byte[v.remaining()];
+            v.duplicate().get(buffer);
+            return CellValue.present(ByteBuffer.wrap(buffer),cell.getCellValue().getTimestamp());
         }
     }
 
