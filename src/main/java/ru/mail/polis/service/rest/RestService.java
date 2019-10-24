@@ -45,6 +45,7 @@ public final class RestService extends HttpServer implements Service {
     private final Topology<ServiceNode> nodes;
     private final DAO dao;
     private final Map<String, HttpClient> pool;
+    private ServiceNode me;
 
     /**
      * Create new instance of RestService for interaction with database.
@@ -65,6 +66,7 @@ public final class RestService extends HttpServer implements Service {
             final String host = node.key();
             if(nodes.isMe(node)) {
                 logger.info("We process int host : " + host);
+                this.me = node;
                 continue;
             }
             logger.info("We have next host in the pool: " + host);
@@ -185,14 +187,14 @@ public final class RestService extends HttpServer implements Service {
         }
         switch (request.getMethod()) {
             case Request.METHOD_GET:
-                asyncExecute(session, () -> get(key));
+                asyncExecute(session, () -> get(id));
                 break;
             case Request.METHOD_PUT:
                 final RF finalRf = rf;
-                asyncExecute(session, () -> upsert(key, request.getBody(), finalRf, proxied));
+                asyncExecute(session, () -> upsert(id, request.getBody(), finalRf, proxied));
                 break;
             case Request.METHOD_DELETE:
-                asyncExecute(session, () -> delete(key));
+                asyncExecute(session, () -> delete(id));
                 break;
             default:
                 logger.warn("Not supported HTTP-method: " + request.getMethod());
@@ -237,10 +239,11 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private Response upsert(
-            @NotNull final ByteBuffer key,
+            @NotNull final String id,
             @NotNull final byte[] value,
             @NotNull final RF rf,
-            final boolean isProxy) throws IOException {
+            final boolean isProxy) throws IOException, InterruptedException, HttpException, PoolException {
+        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
         if(isProxy) {
             dao.upsert(key, ByteBuffer.wrap(value));
             return new Response(Response.CREATED, Response.EMPTY);
@@ -249,18 +252,36 @@ public final class RestService extends HttpServer implements Service {
         final ServiceNode[] nodes = this.nodes.replicas(key, rf.from);
         int ask = 0;
         for(final ServiceNode node : nodes) {
-            if(node.equals(me))
+            if(node.equals(me)) {
+                dao.upsert(key, ByteBuffer.wrap(value));
+                ask++;
+            } else {
+                final Response response = pool.get(node.key()).put(
+                        "v0/entity?id=" + id,
+                        value,
+                        PROXY_HEADER);
+                    if(response.getStatus() == 201) {
+                        ask++;
+                    }
+            }
+        }
+        if(ask >= rf.ask) {
+            return new Response(Response.ACCEPTED, Response.EMPTY);
+        } else {
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
         }
     }
 
     private Response delete(
-            @NotNull final ByteBuffer key) throws IOException {
+            @NotNull final String id) throws IOException {
+        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
         dao.remove(key);
         return new Response(Response.ACCEPTED, Response.EMPTY);
     }
 
     private Response get(
-            @NotNull final ByteBuffer key) throws IOException, NoSuchElementException {
+            @NotNull final String id) throws IOException, NoSuchElementException {
+        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
         final ByteBuffer value = dao.get(key);
         final ByteBuffer duplicate = value.duplicate();
         final byte[] body = new byte[duplicate.remaining()];

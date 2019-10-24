@@ -21,11 +21,11 @@ public final class MemTable implements Table {
 
     private final NavigableMap<ByteBuffer, CellValue> storage = new ConcurrentSkipListMap<>();
     private final NavigableMap<ByteBuffer, CellValue> unmodifiable = Collections.unmodifiableNavigableMap(storage);
-    private final AtomicLong generation = new AtomicLong();
+    private final long generation;
     private final AtomicLong tableSizeInBytes = new AtomicLong();
 
     MemTable(final long generation) {
-        this.generation.set(generation);
+        this.generation = generation;
     }
 
     /**
@@ -42,7 +42,7 @@ public final class MemTable implements Table {
                     @NotNull
                     @Override
                     public Cell apply(Map.@Nullable Entry<ByteBuffer, CellValue> input) {
-                        return Cell.of(input.getKey(), input.getValue(), generation.get());
+                        return Cell.of(input.getKey(), input.getValue(), generation);
                     }
                 });
     }
@@ -84,7 +84,7 @@ public final class MemTable implements Table {
 
     @Override
     public long generation() {
-        return this.generation.get();
+        return this.generation;
     }
 
     @Override
