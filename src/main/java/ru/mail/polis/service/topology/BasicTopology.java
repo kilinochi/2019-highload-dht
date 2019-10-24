@@ -55,7 +55,7 @@ public final class BasicTopology implements Topology<ServiceNode> {
 
     @NotNull
     @Override
-    public ServiceNode[] replicas(@NotNull final ByteBuffer key, final int count) {
+    public ServiceNode[] replicas(final int count) {
         return new ServiceNode[0];
     }
 }

@@ -54,6 +54,7 @@ public final class RestService extends HttpServer implements Service {
      * @param config in config for server
      * @param dao is dao for interaction with database
      * @param nodes all nodes in cluster
+     * @param me is current node
      */
     private RestService(
             @NotNull final HttpServerConfig config,
@@ -254,7 +255,7 @@ public final class RestService extends HttpServer implements Service {
                dao.upsert(key, ByteBuffer.wrap(value));
                return new Response(Response.CREATED, Response.EMPTY);
            }
-           final ServiceNode[] nodes = this.nodes.replicas(key, rf.from);
+           final ServiceNode[] nodes = this.nodes.replicas(rf.from);
            int ask = 0;
            for (final ServiceNode node : nodes) {
                if (node.equals(me)) {
@@ -294,7 +295,7 @@ public final class RestService extends HttpServer implements Service {
                 return ResponseUtils.from(getCells(id.getBytes(Charsets.UTF_8)), proxy);
             }
 
-            final ServiceNode[] nodes = this.nodes.replicas(ByteBuffer.wrap(id.getBytes(Charsets.UTF_8)), rf.from);
+            final ServiceNode[] nodes = this.nodes.replicas(rf.from);
             final List<CellValue> responses = new ArrayList<>();
 
             int ack = 0;

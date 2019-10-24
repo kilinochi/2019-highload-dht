@@ -19,7 +19,8 @@ public final class Cell {
      *
      * @param key          is the key of this cell by which we can find this Cluster
      * @param cellValue is the value in this cell
-     **/
+     * @param generation is generation of this cell
+     */
     private Cell(@NotNull final ByteBuffer key,
                  @NotNull final CellValue cellValue,
                  final long generation) {
