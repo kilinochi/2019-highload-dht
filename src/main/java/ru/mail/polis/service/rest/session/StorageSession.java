@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
-import ru.mail.polis.dao.storage.utils.BytesUtils;
+import ru.mail.polis.utils.BytesUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

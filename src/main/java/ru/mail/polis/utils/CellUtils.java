@@ -1,4 +1,4 @@
-package ru.mail.polis.dao.storage.utils;
+package ru.mail.polis.utils;
 
 import one.nio.http.Response;
 import org.jetbrains.annotations.NotNull;

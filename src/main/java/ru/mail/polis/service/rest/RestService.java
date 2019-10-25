@@ -30,9 +30,9 @@ import java.util.NoSuchElementException;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cell.CellValue;
-import ru.mail.polis.dao.storage.utils.BytesUtils;
-import ru.mail.polis.dao.storage.utils.CellUtils;
-import ru.mail.polis.dao.storage.utils.ResponseUtils;
+import ru.mail.polis.utils.BytesUtils;
+import ru.mail.polis.utils.CellUtils;
+import ru.mail.polis.utils.ResponseUtils;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
@@ -177,7 +177,7 @@ public final class RestService extends HttpServer implements Service {
 
         final boolean proxied = request.getHeader(PROXY_HEADER) != null;
 
-        RF rf = null;
+        RF rf;
         try {
             rf = replicas == null ? defaultRF : RF.of(replicas);
             if(rf.ask < 1 || rf.from < rf.ask || rf.from > nodes.size()) {
@@ -185,6 +185,7 @@ public final class RestService extends HttpServer implements Service {
             }
         } catch (IllegalArgumentException e) {
             ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, "WrongRF".getBytes(Charsets.UTF_8)));
+            return;
         }
 
         final ServiceNode primary = nodes.primaryFor(key);
@@ -201,7 +202,7 @@ public final class RestService extends HttpServer implements Service {
                 asyncExecute(session, () -> upsert(id, request.getBody(), finalRf, proxied));
                 break;
             case Request.METHOD_DELETE:
-                asyncExecute(session, () -> delete(id));
+                asyncExecute(session, () -> delete(id, finalRf, proxied));
                 break;
             default:
                 logger.warn("Not supported HTTP-method: {}", request.getMethod());
@@ -220,8 +221,8 @@ public final class RestService extends HttpServer implements Service {
                 logger.error("Unable to create response {} ", e.getMessage());
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ioExecption) {
-                    logger.error("Error while send response {}", ioExecption.getMessage());
+                } catch (IOException ioExeception) {
+                    logger.error("Error while send response {}", ioExeception.getMessage());
                 }
             } catch (NoSuchElementException e) {
                 try {
@@ -281,10 +282,14 @@ public final class RestService extends HttpServer implements Service {
     }
 
     private Response delete(
-            @NotNull final String id) throws IOException {
-        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
-        dao.remove(key);
-        return new Response(Response.ACCEPTED, Response.EMPTY);
+            @NotNull final String id,
+            @NotNull final RF rf,
+            final boolean proxy) throws IOException {
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        if(proxy) {
+            dao.remove(key);
+            return new Response(Response.ACCEPTED, Response.EMPTY);
+        }
     }
 
     private Response get(
@@ -293,10 +298,10 @@ public final class RestService extends HttpServer implements Service {
             final boolean proxy) throws IOException, NoSuchElementException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         try {
+            final byte[] val = BytesUtils.getBytesFromKey(id);
+            final CellValue cells = CellUtils.getCells(val, dao);
             if (proxy) {
-                final byte[] val = BytesUtils.getBytesFromKey(id);
-                final CellValue cells = CellUtils.getCells(val, dao);
-                return ResponseUtils.from(cells, proxy);
+                return ResponseUtils.from(cells, true);
             }
 
             final ServiceNode[] nodes = this.nodes.replicas(rf.from, key);
@@ -305,8 +310,6 @@ public final class RestService extends HttpServer implements Service {
             int ack = 0;
             for (final ServiceNode node : nodes) {
                 if (node.equals(me)) {
-                    final byte[] val = BytesUtils.getBytesFromKey(id);
-                    final CellValue cells = CellUtils.getCells(val, dao);
                     responses.add(cells);
                     ack++;
                 } else {
@@ -317,7 +320,7 @@ public final class RestService extends HttpServer implements Service {
                 }
             }
             if (ack >= rf.ask) {
-                return ResponseUtils.from(CellUtils.merge(responses), proxy);
+                return ResponseUtils.from(CellUtils.merge(responses), false);
             } else {
                 return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
             }

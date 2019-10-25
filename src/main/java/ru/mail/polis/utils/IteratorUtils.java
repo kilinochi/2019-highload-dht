@@ -1,4 +1,4 @@
-package ru.mail.polis.dao.storage.utils;
+package ru.mail.polis.utils;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;

@@ -5,7 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.LSMDao;
 import ru.mail.polis.dao.storage.cell.Cell;
-import ru.mail.polis.dao.storage.utils.IteratorUtils;
+import ru.mail.polis.utils.IteratorUtils;
 
 import java.io.Closeable;
 import java.io.File;

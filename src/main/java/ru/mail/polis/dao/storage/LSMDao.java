@@ -10,8 +10,8 @@ import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.table.FlushTable;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
-import ru.mail.polis.dao.storage.utils.GenerationUtils;
-import ru.mail.polis.dao.storage.utils.IteratorUtils;
+import ru.mail.polis.utils.GenerationUtils;
+import ru.mail.polis.utils.IteratorUtils;
 
 import java.io.File;
 import java.io.IOException;
