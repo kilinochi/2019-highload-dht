@@ -173,10 +173,9 @@ public final class RestService extends HttpServer implements Service {
             ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
-        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
 
         final boolean proxied = request.getHeader(PROXY_HEADER) != null;
-
+        
         RF rf;
         try {
             rf = replicas == null ? defaultRF : RF.of(replicas);
@@ -188,11 +187,6 @@ public final class RestService extends HttpServer implements Service {
             return;
         }
 
-        final ServiceNode primary = nodes.primaryFor(key);
-        if(!nodes.isMe(primary)) {
-            asyncExecute(session, () -> proxy(primary, request));
-            return;
-        }
         final RF finalRf = rf;
         switch (request.getMethod()) {
             case Request.METHOD_GET:
@@ -232,18 +226,6 @@ public final class RestService extends HttpServer implements Service {
                 }
             }
         });
-    }
-
-    private Response proxy(
-            @NotNull final ServiceNode node,
-            @NotNull final Request request) throws IOException {
-        assert !nodes.isMe(node);
-        try {
-            logger.info("We proxy our request to another node: {}", node.key());
-            return pool.get(node.key()).invoke(request);
-        } catch (InterruptedException | PoolException | HttpException e) {
-            throw (IOException) new IOException().initCause(e);
-        }
     }
 
     private Response upsert(
@@ -286,10 +268,34 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final RF rf,
             final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        if(proxy) {
-            dao.remove(key);
-            return new Response(Response.ACCEPTED, Response.EMPTY);
-        }
+       try {
+           if (proxy) {
+               dao.remove(key);
+               return new Response(Response.ACCEPTED, Response.EMPTY);
+           }
+
+           final ServiceNode[] serviceNodes = nodes.replicas(rf.from, key);
+           int ack = 0;
+           for (final ServiceNode serviceNode : serviceNodes) {
+               if (serviceNode.equals(me)) {
+                   dao.remove(key);
+                   ack++;
+               } else {
+                   final Response response = pool.get(serviceNode.key())
+                           .get("/v0/entity?id=" + id, PROXY_HEADER);
+                   if(response.getStatus() == 2001) {
+                       ack++;
+                   }
+               }
+           }
+           if(ack >= rf.ask) {
+               return new Response(Response.ACCEPTED, Response.EMPTY);
+           } else {
+               return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+           }
+       } catch (InterruptedException | PoolException | HttpException e) {
+           throw (IOException) new IOException().initCause(e);
+       }
     }
 
     private Response get(
