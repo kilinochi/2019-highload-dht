@@ -25,23 +25,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Collection;
 import java.util.NoSuchElementException;
-import java.util.Comparator;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
+import ru.mail.polis.dao.storage.utils.BytesUtils;
+import ru.mail.polis.dao.storage.utils.CellUtils;
+import ru.mail.polis.dao.storage.utils.ResponseUtils;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
 
 public final class RestService extends HttpServer implements Service {
+    public static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
+
     private static final Logger logger = LoggerFactory.getLogger(RestService.class);
     private static final String PROXY_HEADER = "X-OK-Proxy: True";
-    private static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
 
     private final RF defaultRF;
     private final Topology<ServiceNode> nodes;
@@ -172,7 +173,7 @@ public final class RestService extends HttpServer implements Service {
             ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
-        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
 
         final boolean proxied = request.getHeader(PROXY_HEADER) != null;
 
@@ -249,7 +250,7 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final byte[] value,
             @NotNull final RF rf,
             final boolean isProxy) throws IOException {
-        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         try {
            if (isProxy) {
                dao.upsert(key, ByteBuffer.wrap(value));
@@ -290,10 +291,12 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final String id,
             @NotNull final RF rf,
             final boolean proxy) throws IOException, NoSuchElementException {
-        final ByteBuffer key = ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         try {
             if (proxy) {
-                return ResponseUtils.from(getCells(id.getBytes(Charsets.UTF_8)), proxy);
+                final byte[] val = BytesUtils.getBytesFromKey(id);
+                final CellValue cells = CellUtils.getCells(val, dao);
+                return ResponseUtils.from(cells, proxy);
             }
 
             final ServiceNode[] nodes = this.nodes.replicas(rf.from, key);
@@ -302,17 +305,19 @@ public final class RestService extends HttpServer implements Service {
             int ack = 0;
             for (final ServiceNode node : nodes) {
                 if (node.equals(me)) {
-                    responses.add(getCells(id.getBytes(Charsets.UTF_8)));
+                    final byte[] val = BytesUtils.getBytesFromKey(id);
+                    final CellValue cells = CellUtils.getCells(val, dao);
+                    responses.add(cells);
                     ack++;
                 } else {
                     final Response response = pool.get(node.key())
                             .get("/v0/entity?id=" + id, PROXY_HEADER);
                     ack++;
-                    responses.add(from(response));
+                    responses.add(CellUtils.getFromResponse(response));
                 }
             }
             if (ack >= rf.ask) {
-                return ResponseUtils.from(merge(responses), proxy);
+                return ResponseUtils.from(CellUtils.merge(responses), proxy);
             } else {
                 return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
             }
@@ -321,106 +326,9 @@ public final class RestService extends HttpServer implements Service {
         }
     }
 
-    @NotNull
-    private static CellValue merge(@NotNull final Collection<CellValue> values) {
-        return values.stream()
-                .filter(clusterValue -> clusterValue.getState() != CellValue.State.ABSENT)
-                .max(Comparator.comparingLong(CellValue::getTimestamp))
-                .orElseGet(CellValue::absent);
-    }
-
-    @NotNull
-    private static CellValue from(@NotNull final Response response) throws IOException {
-        final String timestamp = response.getHeader(TIMESTAMP_HEADER);
-        if(response.getStatus() == 200) {
-            if(timestamp == null) {
-                throw new IllegalArgumentException("Wrong input data!");
-            }
-            return CellValue.present(
-                    ByteBuffer.wrap(response.getBody()), Long.parseLong(timestamp)
-            );
-        } else if(response.getStatus() == 404) {
-            if(timestamp == null) {
-                return CellValue.absent();
-            } else {
-                return CellValue.removed(Long.parseLong(timestamp));
-            }
-        } else {
-            throw new IOException("IOException while get response from nodes");
-        }
-    }
-
-    private CellValue getCells(final byte[] key) throws IOException {
-        final ByteBuffer k = ByteBuffer.wrap(key);
-        final Iterator<Cell> cells = dao.latestIterator(k);
-        if (!cells.hasNext()) {
-            return CellValue.absent();
-        }
-
-        final Cell cell = cells.next();
-
-        if (cell.getCellValue().getData() == null) {
-            return CellValue.removed(cell.getCellValue().getTimestamp());
-        } else {
-            final ByteBuffer v = cell.getCellValue().getData();
-            final byte[] buffer = new byte[v.remaining()];
-            v.duplicate().get(buffer);
-            return CellValue.present(ByteBuffer.wrap(buffer),cell.getCellValue().getTimestamp());
-        }
-    }
-
     @FunctionalInterface
     private interface ResponsePublisher {
         Response submit() throws IOException;
-    }
-
-    private static final class ResponseUtils {
-        private ResponseUtils() {
-        }
-
-        private static void sendResponse(@NotNull final HttpSession session,
-                                         @NotNull final Response response) {
-            try {
-                session.sendResponse(response);
-            } catch (IOException e) {
-                try {
-                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ex) {
-                    logger.error("Error while send error {} ", ex.getMessage());
-                }
-            }
-        }
-
-        @NotNull
-        private static Response from(@NotNull final CellValue clusterValue,
-                                     final boolean proxy) {
-            final Response result;
-            switch (clusterValue.getState()) {
-                case REMOVED: {
-                    result = new Response(Response.NOT_FOUND, Response.EMPTY);
-                    if(proxy) {
-                        result.addHeader(TIMESTAMP_HEADER + clusterValue.getTimestamp());
-                    }
-                    return result;
-                }
-                case PRESENT: {
-                    final ByteBuffer value = clusterValue.getData();
-                    final ByteBuffer duplicate = value.duplicate();
-                    final byte[] body = new byte[duplicate.remaining()];
-                    duplicate.get(body);
-                    result = new Response(Response.OK, body);
-                    if(proxy) {
-                        result.addHeader(TIMESTAMP_HEADER + clusterValue.getTimestamp());
-                    }
-                    return result;
-                }
-                case ABSENT:{
-                    return new Response(Response.NOT_FOUND, Response.EMPTY);
-                }
-                default:
-                    throw new IllegalArgumentException("Wrong input data!");
-            }
-        }
     }
 
     private static final class RF {
