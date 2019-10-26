@@ -77,6 +77,10 @@ public final class CellUtils {
 
         final Cell cell = cells.next();
 
+        if(!cell.getKey().equals(key)) {
+            return CellValue.absent();
+        }
+
         if (cell.getCellValue().getData() == null) {
             logger.info("{}", CellValue.State.REMOVED);
             return CellValue.removed(cell.getCellValue().getTimestamp());
