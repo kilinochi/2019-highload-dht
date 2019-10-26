@@ -56,14 +56,12 @@ public final class CellUtils {
 
     /**
      * Get latest value from storage.
-     * @param storage is storage from we get data
+     * @param cells is iterator of cells
      * @param key is key by we get data
      */
     @NotNull
-    public static CellValue value(final ByteBuffer key,
-                                  final @NotNull DAO storage) {
-
-        final Iterator<Cell> cells = storage.cellIterator(key.asReadOnlyBuffer());
+    public static CellValue value(final @NotNull ByteBuffer key,
+                                  final @NotNull Iterator<Cell> cells) {
 
         if (!cells.hasNext()) {
             return CellValue.absent();

@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
@@ -90,8 +91,8 @@ public final class DaoService {
                         final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         try {
-
-            final CellValue cells = CellUtils.value(key, dao);
+            final Iterator<Cell> cellsIt = dao.cellIterator(key);
+            final CellValue cells = CellUtils.value(key, cellsIt);
             if (proxy) {
                 return ResponseUtils.from(cells, true);
             }
