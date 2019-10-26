@@ -25,11 +25,12 @@ import java.util.Map;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.utils.BytesUtils;
-import ru.mail.polis.utils.ResponseUtils;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
+
+import static ru.mail.polis.utils.ResponseUtils.sendResponse;
 
 public final class RestController extends HttpServer implements Service {
     public static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
@@ -95,7 +96,7 @@ public final class RestController extends HttpServer implements Service {
     public void handleDefault(
             @NotNull final Request request,
             @NotNull final HttpSession session) {
-        ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+        sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
     }
 
     @Override
@@ -126,15 +127,15 @@ public final class RestController extends HttpServer implements Service {
             @NotNull final HttpSession session) {
         logger.info("Start with : {} and end with : {} ", start, end);
         if (start == null || start.isEmpty()) {
-            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
         if (end != null && end.isEmpty()) {
-            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
         if (request.getMethod() != Request.METHOD_GET) {
-            ResponseUtils.sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
+            sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
             return;
         }
         try {
@@ -160,7 +161,7 @@ public final class RestController extends HttpServer implements Service {
             final Request request,
             final HttpSession session) {
         if (id == null || id.isEmpty()) {
-            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
 
@@ -173,7 +174,7 @@ public final class RestController extends HttpServer implements Service {
                 throw new IllegalArgumentException("From is too big!");
             }
         } catch (IllegalArgumentException e) {
-            ResponseUtils.sendResponse(session, new Response(Response.BAD_REQUEST, "WrongRF".getBytes(Charsets.UTF_8)));
+            sendResponse(session, new Response(Response.BAD_REQUEST, "WrongRF".getBytes(Charsets.UTF_8)));
             return;
         }
 
@@ -191,7 +192,7 @@ public final class RestController extends HttpServer implements Service {
                 break;
             default:
                 logger.warn("Not supported HTTP-method: {}", request.getMethod());
-                ResponseUtils.sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
+                sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
                 break;
         }
     }
@@ -201,7 +202,7 @@ public final class RestController extends HttpServer implements Service {
             @NotNull final ResponsePublisher publisher) {
         asyncExecute(() -> {
             try {
-                ResponseUtils.sendResponse(session, publisher.submit());
+                sendResponse(session, publisher.submit());
             } catch (IOException e) {
                 logger.error("Unable to create response {} ", e.getMessage());
                 try {

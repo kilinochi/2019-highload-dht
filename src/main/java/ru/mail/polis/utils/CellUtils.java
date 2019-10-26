@@ -73,11 +73,12 @@ public final class CellUtils {
             return CellValue.absent();
         }
 
+        final long timestamp = cell.getCellValue().getTimestamp();
         if (cell.getCellValue().getData() == null) {
-            return CellValue.removed(cell.getCellValue().getTimestamp());
+            return CellValue.removed(timestamp);
         } else {
-            final byte[] body = BytesUtils.body(cell.getCellValue().getData());
-            return CellValue.present(ByteBuffer.wrap(body), cell.getCellValue().getTimestamp());
+            final ByteBuffer value = cell.getCellValue().getData();
+            return CellValue.present(value, timestamp);
         }
     }
 }
