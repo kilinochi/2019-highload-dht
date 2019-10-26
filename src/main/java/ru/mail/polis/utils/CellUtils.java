@@ -73,10 +73,10 @@ public final class CellUtils {
         }
 
         final long timestamp = cell.getCellValue().getTimestamp();
-        if (cell.getCellValue().getData() == null) {
+        final ByteBuffer value = cell.getCellValue().getData();
+        if (value == null) {
             return CellValue.removed(timestamp);
         } else {
-            final ByteBuffer value = cell.getCellValue().getData();
             return CellValue.present(value, timestamp);
         }
     }
