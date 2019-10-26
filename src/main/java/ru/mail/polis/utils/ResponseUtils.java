@@ -10,7 +10,7 @@ import ru.mail.polis.dao.storage.cell.CellValue;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static ru.mail.polis.service.rest.RestService.TIMESTAMP_HEADER;
+import static ru.mail.polis.service.rest.RestController.TIMESTAMP_HEADER;
 
 public final class ResponseUtils {
 

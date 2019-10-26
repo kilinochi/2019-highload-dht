@@ -2,8 +2,6 @@ package ru.mail.polis.utils;
 
 import one.nio.http.Response;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
@@ -14,7 +12,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 
-import static ru.mail.polis.service.rest.RestService.TIMESTAMP_HEADER;
+import static ru.mail.polis.service.rest.RestController.TIMESTAMP_HEADER;
 
 public final class CellUtils {
     private CellUtils() {}

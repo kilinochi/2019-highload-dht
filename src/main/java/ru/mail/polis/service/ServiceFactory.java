@@ -19,19 +19,16 @@ package ru.mail.polis.service;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.jetbrains.annotations.NotNull;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.service.rest.RestService;
+import ru.mail.polis.service.rest.RestController;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
 
@@ -79,7 +76,7 @@ public final class ServiceFactory {
                 Topology.consistingHashTopology(
                         serviceNodes,
                         new ServiceNode(new URL("http://localhost:"+port)), 10);
-        return RestService.create(port, dao, topologyNodes);
+        return RestController.create(port, dao, topologyNodes);
     }
 
     private static URL createURL(@NotNull final String s) {
