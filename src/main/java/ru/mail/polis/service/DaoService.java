@@ -61,20 +61,20 @@ public final class DaoService {
             }
 
             final ServiceNode[] serviceNodes = nodes.replicas(from, key);
-            int acks = 0;
+            int asks = 0;
             for (final ServiceNode serviceNode : serviceNodes) {
                 if (serviceNode.equals(me)) {
                     dao.remove(key);
-                    acks++;
+                    asks++;
                 } else {
                     final Response response = clientPool.get(serviceNode.key())
                             .delete("/v0/entity?id=" + id, PROXY_HEADER);
                     if(response.getStatus() == 202) {
-                        acks++;
+                        asks++;
                     }
                 }
             }
-            if(acks >= ask) {
+            if(asks >= ask) {
                 return new Response(Response.ACCEPTED, Response.EMPTY);
             } else {
                 return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
@@ -99,19 +99,19 @@ public final class DaoService {
             final ServiceNode[] nodes = this.nodes.replicas(from, key);
             final List<CellValue> responses = new ArrayList<>();
 
-            int acks = 0;
+            int asks = 0;
             for (final ServiceNode node : nodes) {
                 if (node.equals(me)) {
                     responses.add(cells);
-                    acks++;
+                    asks++;
                 } else {
                     final Response response = clientPool.get(node.key())
                             .get("/v0/entity?id=" + id, PROXY_HEADER);
-                    acks++;
+                    asks++;
                     responses.add(CellUtils.getFromResponse(response));
                 }
             }
-            if (acks >= ask) {
+            if (asks >= ask) {
                 return ResponseUtils.from(CellUtils.merge(responses), false);
             } else {
                 return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
