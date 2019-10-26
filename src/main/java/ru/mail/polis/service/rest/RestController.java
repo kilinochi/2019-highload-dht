@@ -24,7 +24,6 @@ import java.util.Map;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.service.DaoService;
 import ru.mail.polis.utils.BytesUtils;
 import ru.mail.polis.utils.ResponseUtils;
 import ru.mail.polis.service.Service;

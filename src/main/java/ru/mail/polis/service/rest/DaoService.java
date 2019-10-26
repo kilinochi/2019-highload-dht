@@ -1,4 +1,4 @@
-package ru.mail.polis.service;
+package ru.mail.polis.service.rest;
 
 import one.nio.http.HttpClient;
 import one.nio.http.HttpException;
@@ -40,20 +40,20 @@ public final class DaoService {
      * @param dao is dao
      * @param clientPool is pool of client
      */
-    public DaoService(@NotNull final DAO dao,
-                      @NotNull final Map<String, HttpClient> clientPool,
-                      @NotNull final Topology<ServiceNode> nodes,
-                      @NotNull final ServiceNode me) {
+    DaoService(@NotNull final DAO dao,
+               @NotNull final Map<String, HttpClient> clientPool,
+               @NotNull final Topology<ServiceNode> nodes,
+               @NotNull final ServiceNode me) {
         this.dao = dao;
         this.clientPool = clientPool;
         this.nodes = nodes;
         this.me = me;
     }
 
-    public Response delete(@NotNull final String id,
-                           final int ask,
-                           final int from,
-                           final boolean proxy) throws IOException {
+    Response delete(@NotNull final String id,
+                    final int ask,
+                    final int from,
+                    final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         try {
             if (proxy) {
@@ -85,7 +85,7 @@ public final class DaoService {
         }
     }
 
-    public Response get(@NotNull final String id,
+    Response get(@NotNull final String id,
                         final int ask,
                         final int from,
                         final boolean proxy) throws IOException {
@@ -122,7 +122,7 @@ public final class DaoService {
         }
     }
 
-    public Response upsert(@NotNull final String id,
+    Response upsert(@NotNull final String id,
                            @NotNull final byte[] value,
                            final int ask,
                            final int from,
@@ -158,7 +158,7 @@ public final class DaoService {
         }
     }
 
-    public Iterator<Record> range(@NotNull final ByteBuffer from,
+    Iterator<Record> range(@NotNull final ByteBuffer from,
                                   @Nullable final ByteBuffer to) throws IOException {
         return dao.range(from, to);
     }
