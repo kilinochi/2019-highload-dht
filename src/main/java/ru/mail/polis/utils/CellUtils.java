@@ -17,8 +17,6 @@ import java.util.Iterator;
 import static ru.mail.polis.service.rest.RestService.TIMESTAMP_HEADER;
 
 public final class CellUtils {
-    private static final Logger logger = LoggerFactory.getLogger(CellUtils.class);
-
     private CellUtils() {}
 
     /**
@@ -69,9 +67,7 @@ public final class CellUtils {
 
         final Iterator<Cell> cells = storage.cellIterator(key.asReadOnlyBuffer());
 
-        logger.info("Cell state is :");
         if (!cells.hasNext()) {
-            logger.info("{}", CellValue.State.ABSENT);
             return CellValue.absent();
         }
 
@@ -82,10 +78,8 @@ public final class CellUtils {
         }
 
         if (cell.getCellValue().getData() == null) {
-            logger.info("{}", CellValue.State.REMOVED);
             return CellValue.removed(cell.getCellValue().getTimestamp());
         } else {
-            logger.info("{}", CellValue.State.PRESENT);
             final byte[] body = BytesUtils.body(cell.getCellValue().getData());
             return CellValue.present(ByteBuffer.wrap(body), cell.getCellValue().getTimestamp());
         }

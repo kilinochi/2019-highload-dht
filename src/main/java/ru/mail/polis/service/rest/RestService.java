@@ -215,14 +215,8 @@ public final class RestService extends HttpServer implements Service {
                 logger.error("Unable to create response {} ", e.getMessage());
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ioExeception) {
-                    logger.error("Error while send response {}", ioExeception.getMessage());
-                }
-            } catch (NoSuchElementException e) {
-                try {
-                    session.sendError(Response.NOT_FOUND, "Not found recourse!");
-                } catch (IOException ex) {
-                    logger.error("Error while send error {}", ex.getMessage());
+                } catch (IOException ioException) {
+                    logger.error("Error while send response {}", ioException.getMessage());
                 }
             }
         });
@@ -301,12 +295,11 @@ public final class RestService extends HttpServer implements Service {
     private Response get(
             @NotNull final String id,
             @NotNull final RF rf,
-            final boolean proxy) throws IOException, NoSuchElementException {
+            final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         try {
 
             final CellValue cells = CellUtils.value(key, dao);
-            logger.info("CellValue is {}", cells);
             if (proxy) {
                 return ResponseUtils.from(cells, true);
             }
