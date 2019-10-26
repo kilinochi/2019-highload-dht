@@ -282,8 +282,8 @@ public final class RestService extends HttpServer implements Service {
                    ack++;
                } else {
                    final Response response = pool.get(serviceNode.key())
-                           .get("/v0/entity?id=" + id, PROXY_HEADER);
-                   if(response.getStatus() == 201) {
+                           .delete("/v0/entity?id=" + id, PROXY_HEADER);
+                   if(response.getStatus() == 202) {
                        ack++;
                    }
                }
