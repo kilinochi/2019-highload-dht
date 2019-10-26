@@ -46,7 +46,8 @@ public final class ResponseUtils {
     public static Response from(@NotNull final CellValue cellValue,
                                  final boolean proxy) {
         final Response result;
-        switch (cellValue.getState()) {
+        final CellValue.State state = cellValue.getState();
+        switch (state) {
             case REMOVED: {
                 result = new Response(Response.NOT_FOUND, Response.EMPTY);
                 if(proxy) {
@@ -69,5 +70,9 @@ public final class ResponseUtils {
             default:
                 throw new IllegalArgumentException("Wrong input data!");
         }
+    }
+
+    public static Response build(@NotNull final String code, @NotNull final byte[] body) {
+        return new Response(code, body);
     }
 }

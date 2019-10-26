@@ -30,6 +30,7 @@ import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
 
+import static ru.mail.polis.utils.ResponseUtils.build;
 import static ru.mail.polis.utils.ResponseUtils.sendResponse;
 
 public final class RestController extends HttpServer implements Service {
@@ -96,7 +97,7 @@ public final class RestController extends HttpServer implements Service {
     public void handleDefault(
             @NotNull final Request request,
             @NotNull final HttpSession session) {
-        sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+        sendResponse(session, build(Response.BAD_REQUEST, Response.EMPTY));
     }
 
     @Override
@@ -109,7 +110,7 @@ public final class RestController extends HttpServer implements Service {
      */
     @Path("/v0/status")
     public Response status() {
-        return new Response(Response.OK, Response.EMPTY);
+        return build(Response.OK, Response.EMPTY);
     }
 
     /**
@@ -127,15 +128,15 @@ public final class RestController extends HttpServer implements Service {
             @NotNull final HttpSession session) {
         logger.info("Start with : {} and end with : {} ", start, end);
         if (start == null || start.isEmpty()) {
-            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            sendResponse(session, build(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
         if (end != null && end.isEmpty()) {
-            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            sendResponse(session, build(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
         if (request.getMethod() != Request.METHOD_GET) {
-            sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
+            sendResponse(session, build(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
             return;
         }
         try {
@@ -161,7 +162,7 @@ public final class RestController extends HttpServer implements Service {
             final Request request,
             final HttpSession session) {
         if (id == null || id.isEmpty()) {
-            sendResponse(session, new Response(Response.BAD_REQUEST, Response.EMPTY));
+            sendResponse(session, build(Response.BAD_REQUEST, Response.EMPTY));
             return;
         }
 
@@ -174,7 +175,7 @@ public final class RestController extends HttpServer implements Service {
                 throw new IllegalArgumentException("From is too big!");
             }
         } catch (IllegalArgumentException e) {
-            sendResponse(session, new Response(Response.BAD_REQUEST, "WrongRF".getBytes(Charsets.UTF_8)));
+            sendResponse(session, build(Response.BAD_REQUEST, "WrongRF".getBytes(Charsets.UTF_8)));
             return;
         }
 
@@ -192,7 +193,7 @@ public final class RestController extends HttpServer implements Service {
                 break;
             default:
                 logger.warn("Not supported HTTP-method: {}", request.getMethod());
-                sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
+                sendResponse(session, build(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
                 break;
         }
     }
