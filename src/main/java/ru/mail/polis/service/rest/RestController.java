@@ -33,7 +33,7 @@ import ru.mail.polis.service.topology.node.ServiceNode;
 
 public final class RestController extends HttpServer implements Service {
     public static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
-    public static final String PROXY_HEADER = "X-OK-Proxy: True";
+    static final String PROXY_HEADER = "X-OK-Proxy: True";
 
     private static final Logger logger = LoggerFactory.getLogger(RestController.class);
 
@@ -166,7 +166,7 @@ public final class RestController extends HttpServer implements Service {
 
         final boolean proxied = request.getHeader(PROXY_HEADER) != null;
         
-        RF rf;
+        final RF rf;
         try {
             rf = replicas == null ? defaultRF : RF.of(replicas);
             if(rf.ask < 1 || rf.from < rf.ask || rf.from > nodesSize) {
@@ -177,16 +177,17 @@ public final class RestController extends HttpServer implements Service {
             return;
         }
 
-        final RF finalRf = rf;
+        final int ask = rf.ask;
+        final int from = rf.from;
         switch (request.getMethod()) {
             case Request.METHOD_GET:
-                asyncExecute(session, () -> get(id, finalRf, proxied));
+                asyncExecute(session, () -> daoService.get(id, ask, from, proxied));
                 break;
             case Request.METHOD_PUT:
-                asyncExecute(session, () -> upsert(id, request.getBody(), finalRf, proxied));
+                asyncExecute(session, () -> daoService.upsert(id, request.getBody(), ask, from, proxied));
                 break;
             case Request.METHOD_DELETE:
-                asyncExecute(session, () -> delete(id, finalRf, proxied));
+                asyncExecute(session, () -> daoService.delete(id, ask, from, proxied));
                 break;
             default:
                 logger.warn("Not supported HTTP-method: {}", request.getMethod());
@@ -210,28 +211,6 @@ public final class RestController extends HttpServer implements Service {
                 }
             }
         });
-    }
-
-    private Response upsert(
-            @NotNull final String id,
-            @NotNull final byte[] value,
-            @NotNull final RF rf,
-            final boolean isProxy) throws IOException {
-        return daoService.upsert(id, value, rf.ask, rf.from, isProxy);
-    }
-
-    private Response delete(
-            @NotNull final String id,
-            @NotNull final RF rf,
-            final boolean proxy) throws IOException {
-        return daoService.delete(id, rf.ask, rf.from, proxy);
-    }
-
-    private Response get(
-            @NotNull final String id,
-            @NotNull final RF rf,
-            final boolean proxy) throws IOException {
-        return daoService.get(id, rf.ask, rf.from, proxy);
     }
 
     @FunctionalInterface

@@ -26,7 +26,7 @@ import ru.mail.polis.utils.ResponseUtils;
 import static ru.mail.polis.service.rest.RestController.PROXY_HEADER;
 
 
-public final class DaoService {
+final class DaoService {
 
     private final DAO dao;
     private final Map<String, HttpClient> clientPool;
@@ -86,9 +86,9 @@ public final class DaoService {
     }
 
     Response get(@NotNull final String id,
-                        final int ask,
-                        final int from,
-                        final boolean proxy) throws IOException {
+                 final int ask,
+                 final int from,
+                 final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         try {
             final Iterator<Cell> cellsIt = dao.cellIterator(key);
@@ -123,10 +123,10 @@ public final class DaoService {
     }
 
     Response upsert(@NotNull final String id,
-                           @NotNull final byte[] value,
-                           final int ask,
-                           final int from,
-                           final boolean proxy) throws IOException {
+                    @NotNull final byte[] value,
+                    final int ask,
+                    final int from,
+                    final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         final ByteBuffer byteBufferValue = ByteBuffer.wrap(value);
         try {
