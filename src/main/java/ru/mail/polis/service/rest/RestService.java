@@ -148,8 +148,8 @@ public final class RestService extends HttpServer implements Service {
             return;
         }
         try {
-            final Iterator<Record> recordIterator = dao.range(ByteBuffer.wrap(start.getBytes(Charsets.UTF_8)),
-                    end == null ? null : ByteBuffer.wrap(end.getBytes(Charsets.UTF_8)));
+            final Iterator<Record> recordIterator = dao.range(BytesUtils.keyByteBuffer(start),
+                    end == null ? null : BytesUtils.keyByteBuffer(end));
             ((StorageSession) session).stream(recordIterator);
         } catch (IOException e) {
             logger.error("Something wrong while get range of value {}", e.getMessage());
@@ -254,7 +254,7 @@ public final class RestService extends HttpServer implements Service {
                }
            }
            if (ask >= rf.ask) {
-               return new Response(Response.ACCEPTED, Response.EMPTY);
+               return new Response(Response.CREATED, Response.EMPTY);
            } else {
                return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
            }
@@ -268,7 +268,7 @@ public final class RestService extends HttpServer implements Service {
             @NotNull final RF rf,
             final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-       try {
+        try {
            if (proxy) {
                dao.remove(key);
                return new Response(Response.ACCEPTED, Response.EMPTY);
@@ -283,7 +283,7 @@ public final class RestService extends HttpServer implements Service {
                } else {
                    final Response response = pool.get(serviceNode.key())
                            .get("/v0/entity?id=" + id, PROXY_HEADER);
-                   if(response.getStatus() == 2001) {
+                   if(response.getStatus() == 201) {
                        ack++;
                    }
                }
@@ -304,8 +304,9 @@ public final class RestService extends HttpServer implements Service {
             final boolean proxy) throws IOException, NoSuchElementException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         try {
-            final byte[] val = BytesUtils.getBytesFromKey(id);
-            final CellValue cells = CellUtils.getCells(val, dao);
+
+            final CellValue cells = CellUtils.value(key, dao);
+            logger.info("CellValue is {}", cells);
             if (proxy) {
                 return ResponseUtils.from(cells, true);
             }

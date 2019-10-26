@@ -89,7 +89,9 @@ public final class LSMDao implements DAO {
         });
     }
 
-    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) {
+    @NotNull
+    @Override
+    public Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) {
         return IteratorUtils.data(memoryTablePool, ssTables, from);
     }
 
@@ -116,13 +118,6 @@ public final class LSMDao implements DAO {
     @Override
     public void compact() throws IOException {
         memoryTablePool.compact(ssTables, directory, generation);
-    }
-
-    @Override
-    public Iterator<Cell> latestIterator(ByteBuffer from) {
-
-        final List<Iterator<Cell>> compose = IteratorUtils.compose(memoryTablePool, ssTables, from);
-        return IteratorUtils.collapseEquals(compose);
     }
 
     private void flush(final long currentGeneration,

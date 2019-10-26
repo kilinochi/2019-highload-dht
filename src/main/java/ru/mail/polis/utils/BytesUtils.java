@@ -36,7 +36,7 @@ public final class BytesUtils {
      * @param id  is key witch we should be convert to ByteBuffer
      */
     public static ByteBuffer keyByteBuffer(@NotNull final String id) {
-        return ByteBuffer.wrap(id.getBytes(Charsets.UTF_8));
+        return ByteBuffer.wrap(getBytesFromKey(id));
     }
 
     /**

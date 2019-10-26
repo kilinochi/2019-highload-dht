@@ -2,6 +2,8 @@ package ru.mail.polis.utils;
 
 import one.nio.http.Response;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
@@ -15,6 +17,8 @@ import java.util.Iterator;
 import static ru.mail.polis.service.rest.RestService.TIMESTAMP_HEADER;
 
 public final class CellUtils {
+    private static final Logger logger = LoggerFactory.getLogger(CellUtils.class);
+
     private CellUtils() {}
 
     /**
@@ -60,23 +64,26 @@ public final class CellUtils {
      * @param key is key by we get data
      */
     @NotNull
-    public static CellValue getCells(final byte[] key,
-                               final @NotNull DAO storage) {
-        final ByteBuffer k = ByteBuffer.wrap(key);
-        final Iterator<Cell> cells = storage.latestIterator(k);
+    public static CellValue value(final ByteBuffer key,
+                                  final @NotNull DAO storage) {
+
+        final Iterator<Cell> cells = storage.cellIterator(key.asReadOnlyBuffer());
+
+        logger.info("Cell state is :");
         if (!cells.hasNext()) {
+            logger.info("{}", CellValue.State.ABSENT);
             return CellValue.absent();
         }
 
         final Cell cell = cells.next();
 
         if (cell.getCellValue().getData() == null) {
+            logger.info("{}", CellValue.State.REMOVED);
             return CellValue.removed(cell.getCellValue().getTimestamp());
         } else {
-            final ByteBuffer v = cell.getCellValue().getData();
-            final byte[] buffer = new byte[v.remaining()];
-            v.duplicate().get(buffer);
-            return CellValue.present(ByteBuffer.wrap(buffer),cell.getCellValue().getTimestamp());
+            logger.info("{}", CellValue.State.PRESENT);
+            final byte[] body = BytesUtils.body(cell.getCellValue().getData());
+            return CellValue.present(ByteBuffer.wrap(body), cell.getCellValue().getTimestamp());
         }
     }
 }

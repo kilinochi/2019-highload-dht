@@ -39,31 +39,31 @@ public final class ResponseUtils {
 
     /**
      * Get response from client.
-     * @param clusterValue is value witch we should be insert in body response
+     * @param cellValue is value witch we should be insert in body response
      * @param proxy mark current response as proxy response
      */
     @NotNull
-    public static Response from(@NotNull final CellValue clusterValue,
+    public static Response from(@NotNull final CellValue cellValue,
                                  final boolean proxy) {
         final Response result;
-        switch (clusterValue.getState()) {
+        switch (cellValue.getState()) {
             case REMOVED: {
                 result = new Response(Response.NOT_FOUND, Response.EMPTY);
                 if(proxy) {
-                    result.addHeader(TIMESTAMP_HEADER + clusterValue.getTimestamp());
+                    result.addHeader(TIMESTAMP_HEADER + cellValue.getTimestamp());
                 }
                 return result;
             }
             case PRESENT: {
-                final ByteBuffer value = clusterValue.getData();
+                final ByteBuffer value = cellValue.getData();
                 final byte[] body = BytesUtils.body(value);
                 result = new Response(Response.OK, body);
                 if(proxy) {
-                    result.addHeader(TIMESTAMP_HEADER + clusterValue.getTimestamp());
+                    result.addHeader(TIMESTAMP_HEADER + cellValue.getTimestamp());
                 }
                 return result;
             }
-            case ABSENT:{
+            case ABSENT: {
                 return new Response(Response.NOT_FOUND, Response.EMPTY);
             }
             default:
