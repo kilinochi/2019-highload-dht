@@ -175,8 +175,4 @@ final class DaoService {
                                   @Nullable final ByteBuffer to) throws IOException {
         return dao.range(from, to);
     }
-
-    public Response action(@NotNull final Request request,
-                           @NotNull final String id,
-                           @NotNull )
 }
