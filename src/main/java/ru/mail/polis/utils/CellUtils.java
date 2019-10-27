@@ -57,7 +57,7 @@ public final class CellUtils {
     /**
      * Get latest value from storage.
      * @param cells is iterator of cells
-     * @param key is key by we get data
+     * @param key is key by we get data and merge
      */
     @NotNull
     public static CellValue value(final @NotNull ByteBuffer key,
