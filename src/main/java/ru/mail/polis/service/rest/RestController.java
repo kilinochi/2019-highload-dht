@@ -184,7 +184,7 @@ public final class RestController extends HttpServer implements Service {
 
         final int ask = rf.ask;
         final int from = rf.from;
-        boolean finalProxied = proxied;
+        final boolean finalProxied = proxied;
         switch (request.getMethod()) {
             case Request.METHOD_GET:
                 asyncExecute(session, () -> daoService.get(id, ask, from, finalProxied));
