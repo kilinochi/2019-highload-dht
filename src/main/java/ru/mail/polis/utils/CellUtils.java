@@ -35,7 +35,7 @@ public final class CellUtils {
             if(timestamp == null) {
                 return CellValue.absent();
             } else {
-                return CellValue.removed(Long.parseLong(timestamp));
+                return CellValue.removed(Long.parseLong(timestamp)); 
             }
         } else {
             throw new IOException("IOException while get response from nodes");
