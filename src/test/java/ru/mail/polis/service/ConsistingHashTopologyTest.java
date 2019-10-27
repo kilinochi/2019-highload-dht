@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
+import ru.mail.polis.utils.BytesUtils;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -29,14 +30,20 @@ final class ConsistingHashTopologyTest {
             ME = new ServiceNode(new URL("http://localhost:8097"));
             NODES = Set.of(
                     new ServiceNode(new URL("http://localhost:8098")),
-                    new ServiceNode(new URL("http://localhost:8099")));
+                    new ServiceNode(new URL("http://localhost:8099")),
+                    new ServiceNode(new URL("http://localhost:8100")),
+                    new ServiceNode(new URL("http://localhost:8101")),
+                    new ServiceNode(new URL("http://localhost:8102")),
+                    new ServiceNode(new URL("http://localhost:8103")),
+                    new ServiceNode(new URL("http://localhost:8104")));
         } catch (MalformedURLException e) {
             logger.error("Error while create URL ", e.getCause());
         }
     }
 
     private static final long EXPECTED_KEYS_PER_NODE = KEYS_COUNT / NODES.size();
-    private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.15);
+    private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.22);
+    private static final int replicasCount = NODES.size() - 3;
 
 
     @Test
@@ -65,8 +72,18 @@ final class ConsistingHashTopologyTest {
             final int count = value;
             final long delta = Math.abs(EXPECTED_KEYS_PER_NODE - count);
             assertTrue(delta < KEYS_DELTA, "Node keys counter is out of range on node "
-                    + node + ", delta = " + delta);
+                    + node + ", delta = " + delta +  " expected keys delta : " + KEYS_DELTA);
         });
+    }
+
+    @Test
+    void replicasTest() {
+        final Topology<ServiceNode> topology = createTopology();
+        for(long i = 0; i < KEYS_COUNT; i++) {
+            final String key = "keys" + i;
+            final ServiceNode[] nodes = topology.replicas(replicasCount, BytesUtils.keyByteBuffer(key));
+            assertEquals(replicasCount, nodes.length);
+        }
     }
 
     private static Topology<ServiceNode> createTopology() {

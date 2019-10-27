@@ -13,6 +13,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Charsets.UTF_8;
 
@@ -77,25 +80,28 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     public ServiceNode[] replicas(final int count,
                                   @NotNull final ByteBuffer key) {
         final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
-        final ServiceNode[] nodesTailMap =
+        final List<ServiceNode> nodesTailMap =
                 tailMap.values()
                         .stream()
                         .map(VirtualNode::getServiceNode)
                         .distinct()
-                        .sorted()
                         .limit(count)
-                        .toArray(ServiceNode[]::new);
-        if(nodesTailMap.length < count) {
-            return ring
-                    .values()
-                    .stream()
-                    .map(VirtualNode::getServiceNode)
-                    .distinct().limit(count)
-                    .sorted()
-                    .toArray(ServiceNode[]::new);
-        } else {
-            return nodesTailMap;
+                        .sorted()
+                        .collect(Collectors.toCollection(ArrayList::new));
+        if(nodesTailMap.size() < count) {
+            final long limit = (long) count - nodesTailMap.size();
+            final List<ServiceNode> startHeadNodes =
+                    ring.tailMap((long)0)
+                            .values()
+                            .stream()
+                            .map(VirtualNode::getServiceNode)
+                            .distinct()
+                            .limit(limit)
+                            .sorted()
+                            .collect(Collectors.toCollection(ArrayList::new));
+            nodesTailMap.addAll(startHeadNodes);
         }
+        return nodesTailMap.toArray(ServiceNode[]::new);
     }
 
     @Override
@@ -146,8 +152,8 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
                 return hash;
             } catch (NoSuchAlgorithmException e) {
                 logger.error("Exception : ", e.getCause());
+                return -1;
             }
-            return -1;
         }
     }
 }
