@@ -133,7 +133,7 @@ public final class RestService extends HttpServer implements Service {
                     end == null ? null : ByteBuffer.wrap(end.getBytes(Charsets.UTF_8)));
             ((StorageSession) session).stream(recordIterator);
         } catch (IOException e) {
-            logger.error("Something wrong while get range of value {}", e.getMessage());
+            logger.error("Something wrong while get range of value ", e.getCause());
         }
     }
 
@@ -185,14 +185,14 @@ public final class RestService extends HttpServer implements Service {
                 logger.error("Unable to create response {}", e.getMessage());
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ioExecption) {
-                    logger.error("Error while send response {}", ioExecption.getMessage());
+                } catch (IOException ioException) {
+                    logger.error("Error while send response ", ioException.getCause());
                 }
             } catch (NoSuchElementException e) {
                 try {
                     session.sendError(Response.NOT_FOUND, "Not found recourse!");
                 } catch (IOException ex) {
-                    logger.error("Error while send error {}", ex.getMessage());
+                    logger.error("Error while send error ", ex.getCause());
                 }
             }
         });
@@ -249,7 +249,7 @@ public final class RestService extends HttpServer implements Service {
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
                 } catch (IOException ex) {
-                    logger.error("Error while send error : {}", ex.getMessage());
+                    logger.error("Error while send error : ", ex.getCause());
                 }
             }
         }

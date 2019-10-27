@@ -13,8 +13,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.google.common.base.Charsets.UTF_8;
 
@@ -90,22 +88,15 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     }
 
     private static final class MD5Hash implements HashFunction {
-        private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
-        private MessageDigest messageDigest;
 
         private MD5Hash() {
-            try {
-                messageDigest = MessageDigest.getInstance("MD5");
-            } catch (NoSuchAlgorithmException e) {
-                logger.error("Exception : {}", e.getMessage());
-            }
         }
 
         @Override
         public long hash(@NotNull final ByteBuffer key) {
-            lock.readLock().lock();
+            MessageDigest messageDigest;
             try {
+                messageDigest = MessageDigest.getInstance("MD5");
                 messageDigest.reset();
                 final ByteBuffer duplicate = key.duplicate();
                 final byte[] bytes = new byte[duplicate.remaining()];
@@ -114,13 +105,14 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
                 final byte[] digest = messageDigest.digest();
                 long hash = 0;
                 for (int i = 0; i < 4; i++) {
-                    hash <<= 8;
-                    hash |= digest[i];
+                    hash <<= 8 ;
+                    hash |= digest[i] & 0xFF;
                 }
                 return hash;
-            } finally {
-                lock.readLock().unlock();
+            } catch (NoSuchAlgorithmException e) {
+                logger.error("Exception : ", e.getCause());
             }
+            return -1;
         }
     }
 }
