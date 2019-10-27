@@ -2,7 +2,6 @@ package ru.mail.polis.service.rest;
 
 import one.nio.http.HttpClient;
 import one.nio.http.HttpException;
-import one.nio.http.Request;
 import one.nio.http.Response;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -61,6 +60,7 @@ final class DaoService {
                     final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         if (proxy) {
+            logger.info("We get proxy and get remove by key: {} in host: {}", key, me.key());
             dao.remove(key);
             return new Response(Response.ACCEPTED, Response.EMPTY);
         }
@@ -72,7 +72,7 @@ final class DaoService {
                 try {
                     final Response response = clientPool.get(serviceNode.key())
                             .delete("/v0/entity?id=" + id, PROXY_HEADER);
-                    logger.info("We proxy our request to another node : {}", serviceNode.key());
+                    logger.info("We proxy our request (delete) to another node : {}", serviceNode.key());
                     if (response.getStatus() == 202) {
                         logger.info("OK, status is {}", response.getStatus());
                         asks++;
@@ -113,7 +113,7 @@ final class DaoService {
                 try {
                     final Response response = clientPool.get(node.key())
                             .get("/v0/entity?id=" + id, PROXY_HEADER);
-                    logger.info("We proxy our request to another node : {}", node.key());
+                    logger.info("We proxy our request (get) to another node : {}", node.key());
                     asks++;
                     responses.add(CellUtils.getFromResponse(response));
                 } catch (InterruptedException | PoolException | HttpException e) {
@@ -140,6 +140,7 @@ final class DaoService {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         final ByteBuffer byteBufferValue = ByteBuffer.wrap(value);
         if (proxy) {
+            logger.info("We get proxy and upsert value by key : {} in host {}", key, me.key());
             dao.upsert(key, byteBufferValue);
             return new Response(Response.CREATED, Response.EMPTY);
         }
@@ -150,7 +151,7 @@ final class DaoService {
                 try {
                     final Response response = clientPool.get(node.key()).put(
                             "/v0/entity?id=" + id, value, PROXY_HEADER);
-                    logger.info("We proxy our request to another node : {}", node.key());
+                    logger.info("We proxy our request (upsert) to another node : {}", node.key());
                     if (response.getStatus() == 201) {
                         logger.info("OK, status is {}", response.getStatus());
                         asks++;
