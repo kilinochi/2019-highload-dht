@@ -2,6 +2,8 @@ package ru.mail.polis.utils;
 
 import one.nio.http.Response;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
 
@@ -16,6 +18,8 @@ import static ru.mail.polis.service.rest.RestController.TIMESTAMP_HEADER;
 public final class CellUtils {
     private CellUtils() {}
 
+    private static final Logger logger = LoggerFactory.getLogger(CellUtils.class);
+
     /**
      * Get CellValue from response.
      * @param response response from witch we should be get value.
@@ -23,6 +27,7 @@ public final class CellUtils {
     @NotNull
     public static CellValue getFromResponse(@NotNull final Response response) throws IOException {
         final String timestamp = response.getHeader(TIMESTAMP_HEADER);
+        logger.info("Status from response is {} and timestamp is {}", response.getStatus(), timestamp);
         if(response.getStatus() == 200) {
             if(timestamp == null) {
                 throw new IllegalArgumentException("Wrong input data!");
@@ -61,6 +66,7 @@ public final class CellUtils {
     @NotNull
     public static CellValue value(final @NotNull ByteBuffer key,
                                   final @NotNull Iterator<Cell> cells) {
+
 
         if (!cells.hasNext()) {
             return CellValue.absent();

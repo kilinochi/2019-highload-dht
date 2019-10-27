@@ -2,6 +2,7 @@ package ru.mail.polis.service.rest;
 
 import one.nio.http.HttpClient;
 import one.nio.http.HttpException;
+import one.nio.http.Request;
 import one.nio.http.Response;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -71,13 +72,16 @@ final class DaoService {
                 try {
                     final Response response = clientPool.get(serviceNode.key())
                             .delete("/v0/entity?id=" + id, PROXY_HEADER);
+                    logger.info("We proxy our request to another node : {}", serviceNode.key());
                     if (response.getStatus() == 202) {
+                        logger.info("OK, status is {}", response.getStatus());
                         asks++;
                     }
                 } catch (InterruptedException | PoolException | HttpException e) {
-                    logger.info("Can not wait answer from client {}" , e.getMessage());
+                    logger.info("Can not wait answer from client {} in host {}" , e.getMessage(), serviceNode.key());
                 }
             } else {
+                logger.info("Our host is {} and we remove value", me.key());
                 dao.remove(key);
                 asks++;
             }
@@ -109,12 +113,14 @@ final class DaoService {
                 try {
                     final Response response = clientPool.get(node.key())
                             .get("/v0/entity?id=" + id, PROXY_HEADER);
+                    logger.info("We proxy our request to another node : {}", node.key());
                     asks++;
                     responses.add(CellUtils.getFromResponse(response));
                 } catch (InterruptedException | PoolException | HttpException e) {
-                    logger.info("Can not wait answer from client {}" , e.getMessage());
+                    logger.info("Can not wait answer from client {} in host {}" , e.getMessage(), node.key());
                 }
             } else {
+                logger.info("Our host is {} and get value", me.key());
                 responses.add(cells);
                 asks++;
             }
@@ -144,13 +150,16 @@ final class DaoService {
                 try {
                     final Response response = clientPool.get(node.key()).put(
                             "/v0/entity?id=" + id, value, PROXY_HEADER);
+                    logger.info("We proxy our request to another node : {}", node.key());
                     if (response.getStatus() == 201) {
+                        logger.info("OK, status is {}", response.getStatus());
                         asks++;
                     }
                 } catch (InterruptedException | PoolException | HttpException e) {
-                    logger.info("Can not wait answer from client {}" , e.getMessage());
+                    logger.info("Can not wait answer from client {} in host {}" , e.getMessage(), node.key());
                 }
             } else {
+                logger.info("Our host is {} and we upsert value", me.key());
                 dao.upsert(key, byteBufferValue);
                 asks++;
             }
@@ -166,4 +175,8 @@ final class DaoService {
                                   @Nullable final ByteBuffer to) throws IOException {
         return dao.range(from, to);
     }
+
+    public Response action(@NotNull final Request request,
+                           @NotNull final String id,
+                           @NotNull )
 }
