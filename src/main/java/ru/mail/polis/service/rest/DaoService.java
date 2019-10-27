@@ -17,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
@@ -98,10 +97,8 @@ final class DaoService {
                  final int from,
                  final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        final Iterator<Cell> cellsIt = dao.cellIterator(key);
-        final CellValue cells = CellUtils.value(key, cellsIt);
         if (proxy) {
-            return ResponseUtils.from(cells, true);
+            return ResponseUtils.from(CellUtils.value(key, dao.latestIterator(key)), true);
         }
 
         final ServiceNode[] nodes = this.nodes.replicas(from, key);
@@ -121,7 +118,7 @@ final class DaoService {
                 }
             } else {
                 logger.info("Our host is {} and get value", me.key());
-                responses.add(cells);
+                responses.add(CellUtils.value(key, dao.latestIterator(key)));
                 asks++;
             }
         }

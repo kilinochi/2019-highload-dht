@@ -38,13 +38,7 @@ public final class MemTable implements Table {
         return Iterators.transform(unmodifiable.tailMap(from)
                         .entrySet()
                         .iterator(),
-                new Function<Map.Entry<ByteBuffer, CellValue>, Cell>() {
-                    @NotNull
-                    @Override
-                    public Cell apply(Map.@Nullable Entry<ByteBuffer, CellValue> input) {
-                        return Cell.of(input.getKey(), input.getValue(), generation);
-                    }
-                });
+                input -> Cell.of(input.getKey(), input.getValue(), generation));
     }
 
     /**

@@ -94,6 +94,12 @@ public final class LSMDao implements DAO {
         return IteratorUtils.data(memoryTablePool, ssTables, from);
     }
 
+    @NotNull
+    @Override
+    public Iterator<Cell> latestIterator(@NotNull final ByteBuffer from) {
+        return IteratorUtils.latestIter(memoryTablePool, ssTables, from);
+    }
+
     @Override
     public void upsert(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) throws IOException {
         memoryTablePool.upsert(key, value);

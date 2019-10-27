@@ -33,13 +33,21 @@ public final class IteratorUtils {
         return filterAlive(clusterIterator);
     }
 
+    public static Iterator<Cell> latestIter(@NotNull final Table table,
+                                                      @NotNull final NavigableMap<Long, SSTable> ssTables,
+                                                      @NotNull final ByteBuffer from) {
+        final List<Iterator<Cell>> iteratorList = compose(table, ssTables, from);
+        final Iterator<Cell> merged = Iterators.mergeSorted(iteratorList, Cell.COMPARATOR);
+        return Iters.collapseEquals(merged, Cell::getKey);
+    }
+
     /**
      * Compose data from ssTables.
      * @param table is table from witch we should be get Iterators by key
      * @param ssTables is other ssTables from witch we should be get Iterators by key
      * @param from is key from witch we should be get data
      * */
-    public static List<Iterator<Cell>> compose(
+    private static List<Iterator<Cell>> compose(
             @NotNull final Table table,
             @NotNull final NavigableMap<Long, SSTable> ssTables,
             @NotNull final ByteBuffer from){
@@ -55,7 +63,7 @@ public final class IteratorUtils {
      * Collapse equals iterators.
      * @param data is iterators witch we must be collapse
      * */
-    public static Iterator<Cell> collapseEquals(@NotNull final List<Iterator<Cell>> data) {
+    private static Iterator<Cell> collapseEquals(@NotNull final List<Iterator<Cell>> data) {
         return Iters.collapseEquals(Iterators.mergeSorted(data, Cell.COMPARATOR), Cell::getKey);
     }
     
@@ -63,7 +71,7 @@ public final class IteratorUtils {
      * Filter and get only alive Clusters.
      * @param clusters is data which we should be filtered.
      */
-    public static Iterator<Cell> filterAlive(@NotNull final Iterator<Cell> clusters) {
+    private static Iterator<Cell> filterAlive(@NotNull final Iterator<Cell> clusters) {
         return Iterators.filter(
                 clusters, cluster -> {
                     assert cluster != null;
