@@ -25,7 +25,7 @@ public final class BasicTopology implements Topology<ServiceNode> {
             @NotNull final ServiceNode me) {
         this.me = me;
         this.nodes = new ServiceNode[nodes.size()];
-        nodes.toArray(new ServiceNode[0]);
+        nodes.toArray(this.nodes);
         Arrays.sort(this.nodes);
     }
 

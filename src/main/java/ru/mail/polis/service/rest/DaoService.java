@@ -13,6 +13,8 @@ import one.nio.pool.PoolException;
 import org.jetbrains.annotations.NotNull;
 
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cell.Cell;
@@ -27,6 +29,8 @@ import static ru.mail.polis.service.rest.RestController.PROXY_HEADER;
 
 
 final class DaoService {
+
+    private static final Logger logger = LoggerFactory.getLogger(DaoService.class);
 
     private final DAO dao;
     private final Map<String, HttpClient> clientPool;
@@ -55,33 +59,33 @@ final class DaoService {
                     final int from,
                     final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        try {
-            if (proxy) {
-                dao.remove(key);
-                return new Response(Response.ACCEPTED, Response.EMPTY);
-            }
+        if (proxy) {
+            dao.remove(key);
+            return new Response(Response.ACCEPTED, Response.EMPTY);
+        }
 
-            final ServiceNode[] serviceNodes = nodes.replicas(from, key);
-            int asks = 0;
-            for (final ServiceNode serviceNode : serviceNodes) {
-                if (serviceNode.equals(me)) {
-                    dao.remove(key);
-                    asks++;
-                } else {
+        final ServiceNode[] serviceNodes = nodes.replicas(from, key);
+        int asks = 0;
+        for (final ServiceNode serviceNode : serviceNodes) {
+            if (!serviceNode.equals(me)) {
+                try {
                     final Response response = clientPool.get(serviceNode.key())
                             .delete("/v0/entity?id=" + id, PROXY_HEADER);
-                    if(response.getStatus() == 202) {
+                    if (response.getStatus() == 202) {
                         asks++;
                     }
+                } catch (InterruptedException | PoolException | HttpException e) {
+                    logger.info("Can not wait answer from client {}" , e.getMessage());
                 }
-            }
-            if(asks >= ask) {
-                return new Response(Response.ACCEPTED, Response.EMPTY);
             } else {
-                return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+                dao.remove(key);
+                asks++;
             }
-        } catch (InterruptedException | PoolException | HttpException e) {
-            throw (IOException) new IOException().initCause(e);
+        }
+        if(asks >= ask) {
+            return new Response(Response.ACCEPTED, Response.EMPTY);
+        } else {
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
         }
     }
 
@@ -90,35 +94,35 @@ final class DaoService {
                  final int from,
                  final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        try {
-            final Iterator<Cell> cellsIt = dao.cellIterator(key);
-            final CellValue cells = CellUtils.value(key, cellsIt);
-            if (proxy) {
-                return ResponseUtils.from(cells, true);
-            }
+        final Iterator<Cell> cellsIt = dao.cellIterator(key);
+        final CellValue cells = CellUtils.value(key, cellsIt);
+        if (proxy) {
+            return ResponseUtils.from(cells, true);
+        }
 
-            final ServiceNode[] nodes = this.nodes.replicas(from, key);
-            final List<CellValue> responses = new ArrayList<>();
+        final ServiceNode[] nodes = this.nodes.replicas(from, key);
+        final List<CellValue> responses = new ArrayList<>();
 
-            int asks = 0;
-            for (final ServiceNode node : nodes) {
-                if (node.equals(me)) {
-                    responses.add(cells);
-                    asks++;
-                } else {
+        int asks = 0;
+        for (final ServiceNode node : nodes) {
+            if (!node.equals(me)) {
+                try {
                     final Response response = clientPool.get(node.key())
                             .get("/v0/entity?id=" + id, PROXY_HEADER);
                     asks++;
                     responses.add(CellUtils.getFromResponse(response));
+                } catch (InterruptedException | PoolException | HttpException e) {
+                    logger.info("Can not wait answer from client {}" , e.getMessage());
                 }
-            }
-            if (asks >= ask) {
-                return ResponseUtils.from(CellUtils.merge(responses), false);
             } else {
-                return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+                responses.add(cells);
+                asks++;
             }
-        } catch (InterruptedException | PoolException | HttpException e) {
-            throw (IOException) new IOException().initCause(e);
+        }
+        if (asks >= ask) {
+            return ResponseUtils.from(CellUtils.merge(responses), false);
+        } else {
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
         }
     }
 
@@ -129,32 +133,32 @@ final class DaoService {
                     final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         final ByteBuffer byteBufferValue = ByteBuffer.wrap(value);
-        try {
-            if (proxy) {
-                dao.upsert(key, byteBufferValue);
-                return new Response(Response.CREATED, Response.EMPTY);
-            }
-            final ServiceNode[] nodes = this.nodes.replicas(from, key);
-            int asks = 0;
-            for (final ServiceNode node : nodes) {
-                if (node.equals(me)) {
-                    dao.upsert(key, byteBufferValue);
-                    asks++;
-                } else {
+        if (proxy) {
+            dao.upsert(key, byteBufferValue);
+            return new Response(Response.CREATED, Response.EMPTY);
+        }
+        final ServiceNode[] nodes = this.nodes.replicas(from, key);
+        int asks = 0;
+        for (final ServiceNode node : nodes) {
+            if (!node.equals(me)) {
+                try {
                     final Response response = clientPool.get(node.key()).put(
                             "/v0/entity?id=" + id, value, PROXY_HEADER);
                     if (response.getStatus() == 201) {
                         asks++;
                     }
+                } catch (InterruptedException | PoolException | HttpException e) {
+                    logger.info("Can not wait answer from client {}" , e.getMessage());
                 }
-            }
-            if (asks >= ask) {
-                return new Response(Response.CREATED, Response.EMPTY);
             } else {
-                return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+                dao.upsert(key, byteBufferValue);
+                asks++;
             }
-        } catch (InterruptedException | PoolException | HttpException e) {
-            throw (IOException) new IOException().initCause(e);
+        }
+        if (asks >= ask) {
+            return new Response(Response.CREATED, Response.EMPTY);
+        } else {
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
         }
     }
 

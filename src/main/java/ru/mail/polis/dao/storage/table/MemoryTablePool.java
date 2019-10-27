@@ -102,7 +102,7 @@ public final class MemoryTablePool implements Table, Closeable {
     }
 
     @Override
-    public void remove(final @NotNull ByteBuffer key) {
+    public void remove(final @NotNull ByteBuffer key) throws IOException {
         if (stop.get()) {
             throw new IllegalStateException("Already stopped!");
         }
