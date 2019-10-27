@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
@@ -26,10 +27,10 @@ import ru.mail.polis.utils.ResponseUtils;
 
 import static ru.mail.polis.service.rest.RestController.PROXY_HEADER;
 
-
 final class DaoService {
 
     private static final Logger logger = LoggerFactory.getLogger(DaoService.class);
+    private static final String ENTITY_PATH_ID = "/v0/entity?id=";
 
     private final DAO dao;
     private final Map<String, HttpClient> clientPool;
@@ -66,19 +67,19 @@ final class DaoService {
         final ServiceNode[] serviceNodes = nodes.replicas(from, key);
         int asks = 0;
         for (final ServiceNode serviceNode : serviceNodes) {
-            if (!serviceNode.equals(me)) {
+            if (serviceNode.equals(me)) {
+                dao.remove(key);
+                asks++;
+            } else {
                 try {
                     final Response response = clientPool.get(serviceNode.key())
-                            .delete("/v0/entity?id=" + id, PROXY_HEADER);
+                            .delete(ENTITY_PATH_ID + id, PROXY_HEADER);
                     if (response.getStatus() == 202) {
                         asks++;
                     }
                 } catch (InterruptedException | PoolException | HttpException e) {
                     logger.info("Error {} ", e.getMessage());
                 }
-            } else {
-                dao.remove(key);
-                asks++;
             }
         }
         if(asks >= ask) {
@@ -93,27 +94,28 @@ final class DaoService {
                  final int from,
                  final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        final Iterator<Cell> cellIterator = dao.latestIterator(key);
         if (proxy) {
-            return ResponseUtils.from(CellUtils.value(key, dao.latestIterator(key)), true);
+            return ResponseUtils.from(CellUtils.value(key, cellIterator), true);
         }
 
-        final ServiceNode[] nodes = this.nodes.replicas(from, key);
+        final ServiceNode[] serviceNodes = this.nodes.replicas(from, key);
         final List<CellValue> responses = new ArrayList<>();
 
         int asks = 0;
-        for (final ServiceNode node : nodes) {
-            if (!node.equals(me)) {
+        for (final ServiceNode node : serviceNodes) {
+            if (node.equals(me)) {
+                responses.add(CellUtils.value(key, cellIterator));
+                asks++;
+            } else {
                 try {
                     final Response response = clientPool.get(node.key())
-                            .get("/v0/entity?id=" + id, PROXY_HEADER);
+                            .get(ENTITY_PATH_ID + id, PROXY_HEADER);
                     asks++;
                     responses.add(CellUtils.getFromResponse(response));
                 } catch (InterruptedException | PoolException | HttpException e) {
                     logger.info("Can not wait answer from client {} in host {}" , e.getMessage(), node.key());
                 }
-            } else {
-                responses.add(CellUtils.value(key, dao.latestIterator(key)));
-                asks++;
             }
         }
         if (asks >= ask) {
@@ -134,22 +136,22 @@ final class DaoService {
             dao.upsert(key, byteBufferValue);
             return new Response(Response.CREATED, Response.EMPTY);
         }
-        final ServiceNode[] nodes = this.nodes.replicas(from, key);
+        final ServiceNode[] serviceNodes = this.nodes.replicas(from, key);
         int asks = 0;
-        for (final ServiceNode node : nodes) {
-            if (!node.equals(me)) {
+        for (final ServiceNode node : serviceNodes) {
+            if (node.equals(me)) {
+                dao.upsert(key, byteBufferValue);
+                asks++;
+            } else {
                 try {
                     final Response response = clientPool.get(node.key()).put(
-                            "/v0/entity?id=" + id, value, PROXY_HEADER);
+                            ENTITY_PATH_ID + id, value, PROXY_HEADER);
                     if (response.getStatus() == 201) {
                         asks++;
                     }
                 } catch (InterruptedException | PoolException | HttpException e) {
                     logger.info("Can not wait answer from client {} in host {}" , e.getMessage(), node.key());
                 }
-            } else {
-                dao.upsert(key, byteBufferValue);
-                asks++;
             }
         }
         if (asks >= ask) {

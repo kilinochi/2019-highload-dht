@@ -118,6 +118,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
         }
         return ring.get(nodeHashVal).getServiceNode();
     }
+
     @NotNull
     @Override
     public Set<ServiceNode> all() {

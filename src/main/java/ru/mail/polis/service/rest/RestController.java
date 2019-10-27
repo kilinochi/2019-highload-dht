@@ -57,7 +57,7 @@ public final class RestController extends HttpServer implements Service {
             @NotNull final ServiceNode me) throws IOException {
         super(config);
         this.nodesSize = nodes.size();
-        Map<String, HttpClient> pool = new HashMap<>();
+        final Map<String, HttpClient> pool = new HashMap<>();
         this.defaultRF = new RF(nodes.size() / 2 + 1 , nodes.size());
         for(final ServiceNode node : nodes.all()) {
             if(!node.equals(me)) {
@@ -84,7 +84,7 @@ public final class RestController extends HttpServer implements Service {
         final ServiceNode me = nodes.all()
                 .stream()
                 .filter(serviceNode -> serviceNode.key()
-                .endsWith(""+port))
+                .endsWith(String.valueOf(port)))
                 .findFirst().get();
         final HttpServerConfig httpServerConfig = new HttpServerConfig();
         httpServerConfig.acceptors = new AcceptorConfig[]{acceptorConfig};

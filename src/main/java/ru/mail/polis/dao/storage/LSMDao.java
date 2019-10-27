@@ -89,8 +89,7 @@ public final class LSMDao implements DAO {
     }
 
     @NotNull
-    @Override
-    public Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) {
+    private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) {
         return IteratorUtils.data(memoryTablePool, ssTables, from);
     }
 

@@ -79,8 +79,7 @@ public final class MemoryTablePool implements Table, Closeable {
             lock.readLock().unlock();
         }
         final Iterator<Cell> merged = Iterators.mergeSorted(iterators, Cell.COMPARATOR);
-        final Iterator<Cell> withoutEquals = Iters.collapseEquals(merged, Cell::getKey);
-        return withoutEquals;
+        return Iters.collapseEquals(merged, Cell::getKey);
     }
 
     @Override

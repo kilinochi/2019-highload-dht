@@ -57,10 +57,10 @@ public final class BasicTopology implements Topology<ServiceNode> {
     @Override
     public ServiceNode[] replicas(final int count, @NotNull final ByteBuffer key) {
         final ServiceNode[] res = new ServiceNode[count];
-        int i = (key.hashCode() & Integer.MAX_VALUE) % nodes.length;
+        int index = (key.hashCode() & Integer.MAX_VALUE) % nodes.length;
         for(int j = 0; j < count; j++) {
-            res[j] = nodes[i];
-            i = (i + 1) % nodes.length;
+            res[j] = nodes[index];
+            index = (index + 1) % nodes.length;
         }
         return res;
     }

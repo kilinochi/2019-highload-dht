@@ -2,8 +2,6 @@ package ru.mail.polis.utils;
 
 import one.nio.http.Response;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
 

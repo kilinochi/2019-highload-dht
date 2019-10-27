@@ -106,7 +106,5 @@ public interface DAO extends Closeable {
         // Implement me when you get to stage 3
     }
 
-    Iterator<Cell> cellIterator(@NotNull final ByteBuffer key);
-
     Iterator<Cell> latestIterator(@NotNull final ByteBuffer key);
 }
