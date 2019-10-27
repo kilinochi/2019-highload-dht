@@ -3,7 +3,6 @@ package ru.mail.polis.service.topology;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.mail.polis.utils.BytesUtils;
 import ru.mail.polis.service.topology.hash.HashFunction;
 import ru.mail.polis.service.topology.node.ServiceNode;
 import ru.mail.polis.service.topology.node.VirtualNode;
@@ -14,8 +13,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.google.common.base.Charsets.UTF_8;
 
