@@ -47,7 +47,6 @@ public final class ResponseUtils {
                                  final boolean proxy) {
         final Response result;
         final CellValue.State state = cellValue.getState();
-        logger.info("response is proxy : {}, state value is {} and timestamp is {}", proxy, state, cellValue.getTimestamp());
         switch (state) {
             case REMOVED: {
                 result = new Response(Response.NOT_FOUND, Response.EMPTY);

@@ -28,9 +28,8 @@ final class ConsistingHashTopologyTest {
         try {
             ME = new ServiceNode(new URL("http://localhost:8097"));
             NODES = Set.of(
-                        new ServiceNode(new URL("http://localhost:8098")),
-                        new ServiceNode(new URL("http://localhost:8099")),
-                        new ServiceNode(new URL("http://localhost:8100")));
+                    new ServiceNode(new URL("http://localhost:8098")),
+                    new ServiceNode(new URL("http://localhost:8099")));
         } catch (MalformedURLException e) {
             logger.error("Error while create URL {} ", e.getMessage());
         }
@@ -38,7 +37,6 @@ final class ConsistingHashTopologyTest {
 
     private static final long EXPECTED_KEYS_PER_NODE = KEYS_COUNT / NODES.size();
     private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.15);
-    private static final int COUNT_NODES_REPLICAS = NODES.size() - 2;
 
 
     @Test
@@ -67,19 +65,10 @@ final class ConsistingHashTopologyTest {
             final int count = value;
             final long delta = Math.abs(EXPECTED_KEYS_PER_NODE - count);
             assertTrue(delta < KEYS_DELTA, "Node keys counter is out of range on node "
-                    + node + ", delta = " + delta + ", but expected: " + KEYS_DELTA);
+                    + node + ", delta = " + delta);
         });
     }
 
-    @Test
-    void replicasTest() {
-        final Topology<ServiceNode> topology = createTopology();
-        for(int i = 0; i < KEYS_COUNT; i++) {
-            final String key = "superKey: " + i;
-            final ServiceNode[] serviceNodes = topology.replicas(COUNT_NODES_REPLICAS, ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)));
-            assertEquals(COUNT_NODES_REPLICAS, serviceNodes.length);
-        }
-    }
     private static Topology<ServiceNode> createTopology() {
         return Topology.consistingHashTopology(NODES, ME, VIRTUAL_NODE_COUNT);
     }
