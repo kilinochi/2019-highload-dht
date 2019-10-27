@@ -74,6 +74,7 @@ final class DaoService {
                         asks++;
                     }
                 } catch (InterruptedException | PoolException | HttpException e) {
+                    logger.info("Error {} ", e.getMessage());
                 }
             } else {
                 dao.remove(key);
