@@ -166,7 +166,10 @@ public final class RestController extends HttpServer implements Service {
             return;
         }
 
-        final boolean proxied = request.getHeader(PROXY_HEADER) != null;
+        boolean proxied = false;
+        if(request.getHeader(PROXY_HEADER) != null) {
+            proxied = true;
+        }
         
         final RF rf;
         try {
@@ -181,15 +184,16 @@ public final class RestController extends HttpServer implements Service {
 
         final int ask = rf.ask;
         final int from = rf.from;
+        boolean finalProxied = proxied;
         switch (request.getMethod()) {
             case Request.METHOD_GET:
-                asyncExecute(session, () -> daoService.get(id, ask, from, proxied));
+                asyncExecute(session, () -> daoService.get(id, ask, from, finalProxied));
                 break;
             case Request.METHOD_PUT:
-                asyncExecute(session, () -> daoService.upsert(id, request.getBody(), ask, from, proxied));
+                asyncExecute(session, () -> daoService.upsert(id, request.getBody(), ask, from, finalProxied));
                 break;
             case Request.METHOD_DELETE:
-                asyncExecute(session, () -> daoService.delete(id, ask, from, proxied));
+                asyncExecute(session, () -> daoService.delete(id, ask, from, finalProxied));
                 break;
             default:
                 logger.warn("Not supported HTTP-method: {}", request.getMethod());
