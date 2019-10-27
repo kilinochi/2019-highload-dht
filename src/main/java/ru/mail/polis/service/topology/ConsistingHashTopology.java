@@ -29,7 +29,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
      * Create topology based on Consisting hashing.
      * @param nodes is all nodes in cluster
      * @param me is current node.
-     * @param virtualNodeCount  is virtual me count in ring.
+     * @param virtualNodeCount is virtual count in ring.
      */
     ConsistingHashTopology(@NotNull final Set<ServiceNode> nodes,
                            @NotNull final ServiceNode me,
@@ -37,7 +37,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
         this.me = me;
         this.nodes = nodes;
         this.hashFunction = new MD5Hash();
-        nodes.forEach(node->addNode(node, virtualNodeCount));
+        nodes.forEach(node -> addNode(node, virtualNodeCount));
     }
 
     private void addNode(@NotNull final ServiceNode serviceNode,
@@ -62,6 +62,42 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
         return replicas;
     }
 
+    private SortedMap<Long, VirtualNode> tailMap(@NotNull final ByteBuffer key) {
+        final Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
+        return ring.tailMap(hashVal);
+    }
+
+    @Override
+    public int size() {
+        return nodes.size();
+    }
+
+    @NotNull
+    @Override
+    public ServiceNode[] replicas(final int count,
+                                  @NotNull final ByteBuffer key) {
+        final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
+        final ServiceNode[] nodesTailMap =
+                tailMap.values()
+                        .stream()
+                        .map(VirtualNode::getServiceNode)
+                        .distinct()
+                        .sorted()
+                        .limit(count)
+                        .toArray(ServiceNode[]::new);
+        if(nodesTailMap.length < count) {
+            return ring
+                    .values()
+                    .stream()
+                    .map(VirtualNode::getServiceNode)
+                    .distinct().limit(count)
+                    .sorted()
+                    .toArray(ServiceNode[]::new);
+        } else {
+            return nodesTailMap;
+        }
+    }
+
     @Override
     public boolean isMe(@NotNull final ServiceNode node) {
         return me.key().equals(node.key());
@@ -70,8 +106,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     @NotNull
     @Override
     public ServiceNode primaryFor(@NotNull final ByteBuffer key) {
-        final Long hashVal = hashFunction.hash(key.asReadOnlyBuffer());
-        final SortedMap<Long, VirtualNode> tailMap = ring.tailMap(hashVal);
+        final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
         final Long nodeHashVal;
         if(tailMap.isEmpty()) {
             nodeHashVal = ring.firstKey();

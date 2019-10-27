@@ -5,7 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.LSMDao;
 import ru.mail.polis.dao.storage.cell.Cell;
-import ru.mail.polis.dao.storage.utils.IteratorUtils;
+import ru.mail.polis.utils.IteratorUtils;
 
 import java.io.Closeable;
 import java.io.File;
@@ -79,12 +79,7 @@ public final class MemoryTablePool implements Table, Closeable {
             lock.readLock().unlock();
         }
         final Iterator<Cell> merged = Iterators.mergeSorted(iterators, Cell.COMPARATOR);
-        final Iterator<Cell> withoutEquals = Iters.collapseEquals(merged, Cell::getKey);
-
-        return Iterators.filter(
-                withoutEquals,
-                input -> input.getCellValue().getData() != null
-        );
+        return Iters.collapseEquals(merged, Cell::getKey);
     }
 
     @Override
@@ -102,7 +97,7 @@ public final class MemoryTablePool implements Table, Closeable {
     }
 
     @Override
-    public void remove(final @NotNull ByteBuffer key) {
+    public void remove(final @NotNull ByteBuffer key) throws IOException {
         if (stop.get()) {
             throw new IllegalStateException("Already stopped!");
         }

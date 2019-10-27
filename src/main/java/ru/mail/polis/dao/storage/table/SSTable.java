@@ -1,7 +1,7 @@
 package ru.mail.polis.dao.storage.table;
 
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.dao.storage.utils.BytesUtils;
+import ru.mail.polis.utils.BytesUtils;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
 

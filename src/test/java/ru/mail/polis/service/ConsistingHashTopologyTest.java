@@ -28,8 +28,8 @@ final class ConsistingHashTopologyTest {
         try {
             ME = new ServiceNode(new URL("http://localhost:8097"));
             NODES = Set.of(
-                        new ServiceNode(new URL("http://localhost:8098")),
-                        new ServiceNode(new URL("http://localhost:8099")));
+                    new ServiceNode(new URL("http://localhost:8098")),
+                    new ServiceNode(new URL("http://localhost:8099")));
         } catch (MalformedURLException e) {
             logger.error("Error while create URL ", e.getCause());
         }

@@ -1,8 +1,6 @@
 package ru.mail.polis.dao.storage.table;
 
-import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.CellValue;
@@ -11,7 +9,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -34,17 +31,11 @@ public final class MemTable implements Table {
      */
     @NotNull
     @Override
-    public final Iterator<Cell> iterator(@NotNull final ByteBuffer from) {
+    public Iterator<Cell> iterator(@NotNull final ByteBuffer from) {
         return Iterators.transform(unmodifiable.tailMap(from)
                         .entrySet()
                         .iterator(),
-                new Function<Map.Entry<ByteBuffer, CellValue>, Cell>() {
-                    @NotNull
-                    @Override
-                    public Cell apply(Map.@Nullable Entry<ByteBuffer, CellValue> input) {
-                        return Cell.of(input.getKey(), input.getValue(), generation);
-                    }
-                });
+                input -> Cell.of(input.getKey(), input.getValue(), generation));
     }
 
     /**

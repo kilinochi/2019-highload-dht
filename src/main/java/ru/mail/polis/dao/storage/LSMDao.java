@@ -10,8 +10,8 @@ import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.table.FlushTable;
 import ru.mail.polis.dao.storage.table.MemoryTablePool;
 import ru.mail.polis.dao.storage.table.SSTable;
-import ru.mail.polis.dao.storage.utils.GenerationUtils;
-import ru.mail.polis.dao.storage.utils.IteratorUtils;
+import ru.mail.polis.utils.GenerationUtils;
+import ru.mail.polis.utils.IteratorUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,8 +23,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.Path;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.NavigableMap;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
@@ -88,8 +88,15 @@ public final class LSMDao implements DAO {
         });
     }
 
+    @NotNull
     private Iterator<Cell> cellIterator(@NotNull final ByteBuffer from) {
         return IteratorUtils.data(memoryTablePool, ssTables, from);
+    }
+
+    @NotNull
+    @Override
+    public Iterator<Cell> latestIterator(@NotNull final ByteBuffer from) {
+        return IteratorUtils.latestIter(memoryTablePool, ssTables, from);
     }
 
     @Override

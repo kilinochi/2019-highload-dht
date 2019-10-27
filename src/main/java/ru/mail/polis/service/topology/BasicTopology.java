@@ -25,7 +25,7 @@ public final class BasicTopology implements Topology<ServiceNode> {
             @NotNull final ServiceNode me) {
         this.me = me;
         this.nodes = new ServiceNode[nodes.size()];
-        nodes.toArray(new ServiceNode[0]);
+        nodes.toArray(this.nodes);
         Arrays.sort(this.nodes);
     }
 
@@ -46,5 +46,22 @@ public final class BasicTopology implements Topology<ServiceNode> {
     @Override
     public Set<ServiceNode> all() {
         return Set.of(this.nodes);
+    }
+
+    @Override
+    public int size() {
+        return nodes.length;
+    }
+
+    @NotNull
+    @Override
+    public ServiceNode[] replicas(final int count, @NotNull final ByteBuffer key) {
+        final ServiceNode[] res = new ServiceNode[count];
+        int index = (key.hashCode() & Integer.MAX_VALUE) % nodes.length;
+        for(int j = 0; j < count; j++) {
+            res[j] = nodes[index];
+            index = (index + 1) % nodes.length;
+        }
+        return res;
     }
 }

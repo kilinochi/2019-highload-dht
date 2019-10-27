@@ -1,4 +1,4 @@
-package ru.mail.polis.dao.storage.utils;
+package ru.mail.polis.utils;
 
 import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
@@ -29,8 +29,21 @@ public final class IteratorUtils {
                                       @NotNull final NavigableMap<Long, SSTable> tables,
                                       @NotNull final ByteBuffer from) {
         final List<Iterator<Cell>> list = compose(table, tables, from);
-        final Iterator<Cell> clusterIterator = collapseEquals(list);
-        return filter(clusterIterator);
+        final Iterator<Cell> cellIterator = collapseEquals(list);
+        return filterAlive(cellIterator);
+    }
+
+    /**
+     * Return latestIterators with removed cells.
+     * @param table is table witch collapse their iters with another tables
+     * @param ssTables is collection witch collapse theirs iters with table
+     * @param from is key from we get data
+     */
+    public static Iterator<Cell> latestIter(@NotNull final Table table,
+                                            @NotNull final NavigableMap<Long, SSTable> ssTables,
+                                            @NotNull final ByteBuffer from) {
+        final List<Iterator<Cell>> iteratorList = compose(table, ssTables, from);
+        return collapseEquals(iteratorList);
     }
 
     /**
@@ -44,10 +57,10 @@ public final class IteratorUtils {
             @NotNull final NavigableMap<Long, SSTable> ssTables,
             @NotNull final ByteBuffer from){
         final List<Iterator<Cell>> list = new ArrayList<>();
+        list.add(table.iterator(from));
         for (final Table fromOther : ssTables.values()) {
             list.add(fromOther.iterator(from));
         }
-        list.add(table.iterator(from));
         return list;
     }
 
@@ -60,14 +73,14 @@ public final class IteratorUtils {
     }
     
     /**
-     * Filter and get only alive Clusters.
-     * @param clusters is data which we should be filtered.
+     * Filter and get only alive cell.
+     * @param cellIterator is data which we should be filtered.
      */
-    private static Iterator<Cell> filter(@NotNull final Iterator<Cell> clusters) {
+    private static Iterator<Cell> filterAlive(@NotNull final Iterator<Cell> cellIterator) {
         return Iterators.filter(
-                clusters, cluster -> {
-                    assert cluster != null;
-                    return cluster.getCellValue().getState() != CellValue.State.REMOVED;
+                cellIterator, cell -> {
+                    assert cell != null;
+                    return cell.getCellValue().getState() != CellValue.State.REMOVED;
                 }
         );
     }
