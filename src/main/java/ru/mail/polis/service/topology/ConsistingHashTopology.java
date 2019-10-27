@@ -126,35 +126,31 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     }
 
     private static final class MD5Hash implements HashFunction {
-        private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
-        private MessageDigest messageDigest;
 
         private MD5Hash() {
-            try {
-                messageDigest = MessageDigest.getInstance("MD5");
-            } catch (NoSuchAlgorithmException e) {
-                logger.error("Exception : {}", e.getMessage());
-            }
         }
 
         @Override
         public long hash(@NotNull final ByteBuffer key) {
-            lock.readLock().lock();
+            MessageDigest messageDigest;
             try {
+                messageDigest = MessageDigest.getInstance("MD5");
                 messageDigest.reset();
-                final byte[] bytes = BytesUtils.body(key);
+                final ByteBuffer duplicate = key.duplicate();
+                final byte[] bytes = new byte[duplicate.remaining()];
+                key.get(bytes);
                 messageDigest.update(bytes);
                 final byte[] digest = messageDigest.digest();
                 long hash = 0;
                 for (int i = 0; i < 4; i++) {
-                    hash <<= 8;
+                    hash <<= 8 ;
                     hash |= digest[i] & 0xFF;
                 }
                 return hash;
-            } finally {
-                lock.readLock().unlock();
+            } catch (NoSuchAlgorithmException e) {
+                logger.error("Exception : ", e.getCause());
             }
+            return -1;
         }
     }
 }

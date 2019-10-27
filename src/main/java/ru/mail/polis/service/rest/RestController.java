@@ -144,7 +144,7 @@ public final class RestController extends HttpServer implements Service {
                     end == null ? null : BytesUtils.keyByteBuffer(end));
             ((StorageSession) session).stream(recordIterator);
         } catch (IOException e) {
-            logger.error("Something wrong while get range of value {}", e.getMessage());
+            logger.error("Something wrong while get range of value ", e.getCause());
         }
     }
 
@@ -209,11 +209,11 @@ public final class RestController extends HttpServer implements Service {
             try {
                 sendResponse(session, publisher.submit());
             } catch (IOException e) {
-                logger.error("Unable to create response {} ", e.getMessage());
+                logger.error("Unable to create response ", e.getCause());
                 try {
                     session.sendError(Response.INTERNAL_ERROR, "Error while send response");
                 } catch (IOException ioException) {
-                    logger.error("Error while send response {}", ioException.getMessage());
+                    logger.error("Error while send response ", ioException.getCause());
                 }
             }
         });

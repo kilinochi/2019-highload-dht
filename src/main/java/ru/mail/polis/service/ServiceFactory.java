@@ -84,7 +84,7 @@ public final class ServiceFactory {
         try {
             url = new URL(s);
         } catch (MalformedURLException e) {
-            logger.error("Error while create url format {}", e.getMessage());
+            logger.error("Error while create url format ", e.getCause());
         }
         return url;
     }

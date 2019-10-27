@@ -32,7 +32,7 @@ public final class ResponseUtils {
             try {
                 session.sendError(Response.INTERNAL_ERROR, "Error while send response");
             } catch (IOException ex) {
-                logger.error("Error while send error {} ", ex.getMessage());
+                logger.error("Error while send error ", ex.getCause());
             }
         }
     }
