@@ -77,7 +77,6 @@ final class ConsistingHashTopologyTest {
         for(int i = 0; i < KEYS_COUNT; i++) {
             final String key = "superKey: " + i;
             final ServiceNode[] serviceNodes = topology.replicas(COUNT_NODES_REPLICAS, ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)));
-            logger.info("iteration is {}", i);
             assertEquals(COUNT_NODES_REPLICAS, serviceNodes.length);
         }
     }
