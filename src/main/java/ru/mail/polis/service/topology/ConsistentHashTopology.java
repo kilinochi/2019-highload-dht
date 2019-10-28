@@ -10,7 +10,11 @@ import ru.mail.polis.service.topology.node.VirtualNode;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Charsets.UTF_8;
