@@ -32,8 +32,8 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
      * Create topology based on Consisting hashing.
      *
      * @param nodes            is all nodes in cluster
-     * @param me               is current node.
-     * @param virtualNodeCount is virtual count in ring.
+     * @param me               is current node
+     * @param virtualNodeCount is range in ring
      */
     ConsistentHashTopology(@NotNull final Set<ServiceNode> nodes,
                            @NotNull final ServiceNode me,
