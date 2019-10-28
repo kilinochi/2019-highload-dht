@@ -154,7 +154,7 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
                 return hash;
             } catch (NoSuchAlgorithmException e) {
                 logger.error("Exception : ", e.getCause());
-                throw (RuntimeException) new RuntimeException("You lost all polymers!").initCause(e);
+                throw new RuntimeException("You lost all polymers! ", e);
             }
         }
     }
