@@ -58,7 +58,7 @@ final class DaoService {
     }
 
     Response delete(@NotNull final String id,
-                    final int ask,
+                    final int acks,
                     final int from,
                     final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
@@ -85,7 +85,7 @@ final class DaoService {
                 }
             }
         }
-        if (asks >= ask) {
+        if (asks >= acks) {
             return new Response(Response.ACCEPTED, Response.EMPTY);
         } else {
             return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
@@ -93,7 +93,7 @@ final class DaoService {
     }
 
     Response get(@NotNull final String id,
-                 final int ask,
+                 final int acks,
                  final int from,
                  final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
@@ -121,7 +121,7 @@ final class DaoService {
                 }
             }
         }
-        if (asks >= ask) {
+        if (asks >= acks) {
             return ResponseUtils.from(CellUtils.merge(responses), false);
         } else {
             return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
@@ -130,7 +130,7 @@ final class DaoService {
 
     Response upsert(@NotNull final String id,
                     @NotNull final byte[] value,
-                    final int ask,
+                    final int acks,
                     final int from,
                     final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
@@ -157,7 +157,7 @@ final class DaoService {
                 }
             }
         }
-        if (asks >= ask) {
+        if (asks >= acks) {
             return new Response(Response.CREATED, Response.EMPTY);
         } else {
             return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);

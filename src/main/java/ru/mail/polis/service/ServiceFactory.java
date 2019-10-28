@@ -73,7 +73,7 @@ public final class ServiceFactory {
                             .collect(Collectors.toCollection(TreeSet::new));
 
         final Topology<ServiceNode> topologyNodes =
-                Topology.consistingHashTopology(
+                Topology.consistentHashTopology(
                         serviceNodes,
                         new ServiceNode(new URL("http://localhost:"+port)), 10);
         return RestController.create(port, dao, topologyNodes);

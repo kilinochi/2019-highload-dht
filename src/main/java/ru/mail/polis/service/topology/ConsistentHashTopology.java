@@ -19,9 +19,9 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Charsets.UTF_8;
 
-public final class ConsistingHashTopology implements Topology<ServiceNode> {
+public final class ConsistentHashTopology implements Topology<ServiceNode> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ConsistingHashTopology.class);
+    private static final Logger logger = LoggerFactory.getLogger(ConsistentHashTopology.class);
 
     private final Set<ServiceNode> nodes;
     private final ServiceNode me;
@@ -35,7 +35,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
      * @param me               is current node.
      * @param virtualNodeCount is virtual count in ring.
      */
-    ConsistingHashTopology(@NotNull final Set<ServiceNode> nodes,
+    ConsistentHashTopology(@NotNull final Set<ServiceNode> nodes,
                            @NotNull final ServiceNode me,
                            final long virtualNodeCount) {
         this.me = me;

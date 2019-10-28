@@ -179,7 +179,7 @@ public final class RestController extends HttpServer implements Service {
         final RF rf;
         try {
             rf = replicas == null ? defaultRF : RF.of(replicas);
-            if (rf.ask < 1 || rf.from < rf.ask || rf.from > nodesSize) {
+            if (rf.ack < 1 || rf.from < rf.ack || rf.from > nodesSize) {
                 throw new IllegalArgumentException("From is too big!");
             }
         } catch (IllegalArgumentException e) {
@@ -187,7 +187,7 @@ public final class RestController extends HttpServer implements Service {
             return;
         }
 
-        final int ask = rf.ask;
+        final int ask = rf.ack;
         final int from = rf.from;
         final boolean finalProxied = proxied;
         switch (request.getMethod()) {
@@ -230,11 +230,11 @@ public final class RestController extends HttpServer implements Service {
     }
 
     private static final class RF {
-        private final int ask;
+        private final int ack;
         private final int from;
 
-        private RF(final int ask, final int from) {
-            this.ask = ask;
+        private RF(final int ack, final int from) {
+            this.ack = ack;
             this.from = from;
         }
 

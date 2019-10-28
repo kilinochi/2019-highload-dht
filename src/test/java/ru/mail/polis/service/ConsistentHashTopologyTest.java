@@ -18,8 +18,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-final class ConsistingHashTopologyTest {
-    private static final Logger logger = LoggerFactory.getLogger(ConsistingHashTopologyTest.class);
+final class ConsistentHashTopologyTest {
+    private static final Logger logger = LoggerFactory.getLogger(ConsistentHashTopologyTest.class);
 
     private static final int KEYS_COUNT = 1000;
     private static final long VIRTUAL_NODE_COUNT = 65;
@@ -88,6 +88,6 @@ final class ConsistingHashTopologyTest {
     }
 
     private static Topology<ServiceNode> createTopology() {
-        return Topology.consistingHashTopology(NODES, ME, VIRTUAL_NODE_COUNT);
+        return Topology.consistentHashTopology(NODES, ME, VIRTUAL_NODE_COUNT);
     }
 }
