@@ -3,12 +3,14 @@ package ru.mail.polis.service.rest;
 import one.nio.http.HttpClient;
 import one.nio.http.HttpException;
 import one.nio.http.Response;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
 import one.nio.pool.PoolException;
 import org.jetbrains.annotations.NotNull;
 
@@ -39,9 +41,10 @@ final class DaoService {
 
     /**
      * Create service for interaction to dao.
-     * @param nodes is nodes to the cluster
-     * @param me is current node
-     * @param dao is dao
+     *
+     * @param nodes      is nodes to the cluster
+     * @param me         is current node
+     * @param dao        is dao
      * @param clientPool is pool of client
      */
     DaoService(@NotNull final DAO dao,
@@ -82,7 +85,7 @@ final class DaoService {
                 }
             }
         }
-        if(asks >= ask) {
+        if (asks >= ask) {
             return new Response(Response.ACCEPTED, Response.EMPTY);
         } else {
             return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
@@ -114,7 +117,7 @@ final class DaoService {
                     asks++;
                     responses.add(CellUtils.getFromResponse(response));
                 } catch (InterruptedException | PoolException | HttpException e) {
-                    logger.info("Can not wait answer from client {} in host {}" , e.getMessage(), node.key());
+                    logger.info("Can not wait answer from client {} in host {}", e.getMessage(), node.key());
                 }
             }
         }
@@ -150,7 +153,7 @@ final class DaoService {
                         asks++;
                     }
                 } catch (InterruptedException | PoolException | HttpException e) {
-                    logger.info("Can not wait answer from client {} in host {}" , e.getMessage(), node.key());
+                    logger.info("Can not wait answer from client {} in host {}", e.getMessage(), node.key());
                 }
             }
         }
@@ -162,7 +165,7 @@ final class DaoService {
     }
 
     Iterator<Record> range(@NotNull final ByteBuffer from,
-                                  @Nullable final ByteBuffer to) throws IOException {
+                           @Nullable final ByteBuffer to) throws IOException {
         return dao.range(from, to);
     }
 }

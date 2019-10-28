@@ -22,9 +22,10 @@ final class ConsistingHashTopologyTest {
     private static final Logger logger = LoggerFactory.getLogger(ConsistingHashTopologyTest.class);
 
     private static final int KEYS_COUNT = 1000;
-    private static final long VIRTUAL_NODE_COUNT = 20;
+    private static final long VIRTUAL_NODE_COUNT = 65;
     private static Set<ServiceNode> NODES = null;
     private static ServiceNode ME = null;
+
     static {
         try {
             ME = new ServiceNode(new URL("http://localhost:8097"));
@@ -42,7 +43,7 @@ final class ConsistingHashTopologyTest {
     }
 
     private static final long EXPECTED_KEYS_PER_NODE = KEYS_COUNT / NODES.size();
-    private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.22);
+    private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.15);
     private static final int replicasCount = NODES.size() - 3;
 
 
@@ -50,7 +51,7 @@ final class ConsistingHashTopologyTest {
     void consistentTest() {
         final Topology<ServiceNode> topology1 = createTopology();
         final Topology<ServiceNode> topology2 = createTopology();
-        for(int i = 0; i < KEYS_COUNT; i++) {
+        for (int i = 0; i < KEYS_COUNT; i++) {
             final ByteBuffer key = ByteBuffer.wrap(("key" + i).getBytes(Charsets.UTF_8));
             final ServiceNode node1 = topology1.primaryFor(key.duplicate());
             final ServiceNode node2 = topology2.primaryFor(key.duplicate());
@@ -62,7 +63,7 @@ final class ConsistingHashTopologyTest {
     void testUniform() {
         final Topology<ServiceNode> topology = createTopology();
         final Map<ServiceNode, Integer> counter = new HashMap<>();
-        for(long i = 0; i < KEYS_COUNT; i++) {
+        for (long i = 0; i < KEYS_COUNT; i++) {
             final String key = "superKeyNumber" + i;
             final ServiceNode node = topology.primaryFor(ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)));
             counter.compute(node, (u, c) -> c == null ? 1 : c + 1);
@@ -72,15 +73,15 @@ final class ConsistingHashTopologyTest {
             final int count = value;
             final long delta = Math.abs(EXPECTED_KEYS_PER_NODE - count);
             assertTrue(delta < KEYS_DELTA, "Node keys counter is out of range on node "
-                    + node + ", delta = " + delta +  " expected keys delta : " + KEYS_DELTA);
+                    + node + ", delta = " + delta + " expected keys delta : " + KEYS_DELTA);
         });
     }
 
     @Test
     void replicasTest() {
         final Topology<ServiceNode> topology = createTopology();
-        for(long i = 0; i < KEYS_COUNT; i++) {
-            final String key = "keys" + i;
+        for (long i = 0; i < KEYS_COUNT; i++) {
+            final String key = "superPuperKey" + i;
             final ServiceNode[] nodes = topology.replicas(replicasCount, BytesUtils.keyByteBuffer(key));
             assertEquals(replicasCount, nodes.length);
         }

@@ -16,6 +16,7 @@ import one.nio.server.AcceptorConfig;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.HashMap;
@@ -45,10 +46,11 @@ public final class RestController extends HttpServer implements Service {
 
     /**
      * Create new instance of RestService for interaction with database.
+     *
      * @param config in config for server
-     * @param dao is dao for interaction with database
-     * @param nodes all nodes in cluster
-     * @param me is current node
+     * @param dao    is dao for interaction with database
+     * @param nodes  all nodes in cluster
+     * @param me     is current node
      */
     private RestController(
             @NotNull final HttpServerConfig config,
@@ -58,9 +60,9 @@ public final class RestController extends HttpServer implements Service {
         super(config);
         this.nodesSize = nodes.size();
         final Map<String, HttpClient> pool = new HashMap<>();
-        this.defaultRF = new RF(nodes.size() / 2 + 1 , nodes.size());
-        for(final ServiceNode node : nodes.all()) {
-            if(!node.equals(me)) {
+        this.defaultRF = new RF(nodes.size() / 2 + 1, nodes.size());
+        for (final ServiceNode node : nodes.all()) {
+            if (!node.equals(me)) {
                 final String url = node.key();
                 assert !pool.containsKey(node.key());
                 pool.put(url, new HttpClient(new ConnectionString(url + "?timeout=100")));
@@ -71,8 +73,9 @@ public final class RestController extends HttpServer implements Service {
 
     /**
      * Build new instance of RestService.
-     * @param port is port on witch Service will be running
-     * @param dao is dao for interaction with database
+     *
+     * @param port  is port on witch Service will be running
+     * @param dao   is dao for interaction with database
      * @param nodes is all nodes in the cluster
      */
     public static RestController create(
@@ -84,7 +87,7 @@ public final class RestController extends HttpServer implements Service {
         final ServiceNode me = nodes.all()
                 .stream()
                 .filter(serviceNode -> serviceNode.key()
-                .endsWith(String.valueOf(port)))
+                        .endsWith(String.valueOf(port)))
                 .findFirst().get();
         final HttpServerConfig httpServerConfig = new HttpServerConfig();
         httpServerConfig.acceptors = new AcceptorConfig[]{acceptorConfig};
@@ -115,8 +118,9 @@ public final class RestController extends HttpServer implements Service {
 
     /**
      * Rest-endpoint with this uri.
-     * @param start is parameters for uri
-     * @param end is parameters for uri
+     *
+     * @param start   is parameters for uri
+     * @param end     is parameters for uri
      * @param request is request on this uri
      * @param session is current session
      */
@@ -150,10 +154,11 @@ public final class RestController extends HttpServer implements Service {
 
     /**
      * Rest-endpoint with this uri.
-     * @param id is parameters for uri
+     *
+     * @param id       is parameters for uri
      * @param replicas is replication factor in this endpoint
-     * @param request is request on this uri
-     * @param session is current session
+     * @param request  is request on this uri
+     * @param session  is current session
      */
     @Path("/v0/entity")
     public void entity(
@@ -167,14 +172,14 @@ public final class RestController extends HttpServer implements Service {
         }
 
         boolean proxied = false;
-        if(request.getHeader(PROXY_HEADER) != null) {
+        if (request.getHeader(PROXY_HEADER) != null) {
             proxied = true;
         }
-        
+
         final RF rf;
         try {
             rf = replicas == null ? defaultRF : RF.of(replicas);
-            if(rf.ask < 1 || rf.from < rf.ask || rf.from > nodesSize) {
+            if (rf.ask < 1 || rf.from < rf.ask || rf.from > nodesSize) {
                 throw new IllegalArgumentException("From is too big!");
             }
         } catch (IllegalArgumentException e) {
@@ -236,7 +241,7 @@ public final class RestController extends HttpServer implements Service {
         @NotNull
         private static RF of(@NotNull final String value) {
             final List<String> values = Splitter.on('/').splitToList(value);
-            if(values.size() != 2) {
+            if (values.size() != 2) {
                 throw new IllegalArgumentException("Wrong replica factor:" + value);
             }
             return new RF(Integer.parseInt(values.get(0)), Integer.parseInt(values.get(1)));

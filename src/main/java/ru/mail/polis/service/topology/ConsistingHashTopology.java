@@ -30,8 +30,9 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
 
     /**
      * Create topology based on Consisting hashing.
-     * @param nodes is all nodes in cluster
-     * @param me is current node.
+     *
+     * @param nodes            is all nodes in cluster
+     * @param me               is current node.
      * @param virtualNodeCount is virtual count in ring.
      */
     ConsistingHashTopology(@NotNull final Set<ServiceNode> nodes,
@@ -45,11 +46,11 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
 
     private void addNode(@NotNull final ServiceNode serviceNode,
                          final long vNodeCount) {
-        if(vNodeCount < 0) {
+        if (vNodeCount < 0) {
             throw new IllegalArgumentException("Illegal virtual node counts : " + vNodeCount);
         }
         final int existingReplicas = getExistingReplicas(serviceNode);
-        for(int i = 0; i < vNodeCount; i++) {
+        for (int i = 0; i < vNodeCount; i++) {
             final VirtualNode virtualNode = new VirtualNode(serviceNode, i + existingReplicas);
             ring.put(hashFunction.hash(ByteBuffer.wrap(virtualNode.key().getBytes(UTF_8))), virtualNode);
         }
@@ -57,8 +58,8 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
 
     private int getExistingReplicas(@NotNull final ServiceNode node) {
         int replicas = 0;
-        for(final VirtualNode virtualNode : ring.values()) {
-            if(virtualNode.isVirtualNodeOf(node)) {
+        for (final VirtualNode virtualNode : ring.values()) {
+            if (virtualNode.isVirtualNodeOf(node)) {
                 replicas = replicas + 1;
             }
         }
@@ -88,10 +89,11 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
                         .limit(count)
                         .sorted()
                         .collect(Collectors.toCollection(ArrayList::new));
-        if(nodesTailMap.size() < count) {
+        if (nodesTailMap.size() < count) {
             final long limit = (long) count - nodesTailMap.size();
+
             final List<ServiceNode> startHeadNodes =
-                    ring.tailMap((long)0)
+                    ring.tailMap(ring.firstKey())
                             .values()
                             .stream()
                             .map(VirtualNode::getServiceNode)
@@ -114,7 +116,7 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
     public ServiceNode primaryFor(@NotNull final ByteBuffer key) {
         final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
         final Long nodeHashVal;
-        if(tailMap.isEmpty()) {
+        if (tailMap.isEmpty()) {
             nodeHashVal = ring.firstKey();
         } else {
             nodeHashVal = tailMap.firstKey();
@@ -146,13 +148,13 @@ public final class ConsistingHashTopology implements Topology<ServiceNode> {
                 final byte[] digest = messageDigest.digest();
                 long hash = 0;
                 for (int i = 0; i < 4; i++) {
-                    hash <<= 8 ;
+                    hash <<= 8;
                     hash |= digest[i] & 0xFF;
                 }
                 return hash;
             } catch (NoSuchAlgorithmException e) {
                 logger.error("Exception : ", e.getCause());
-                return -1;
+                throw new RuntimeException("You lost all polymers!");
             }
         }
     }

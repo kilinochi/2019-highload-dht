@@ -32,7 +32,7 @@ public interface Topology<T extends Node> {
     @NotNull
     static Topology<ServiceNode> consistingHashTopology(@NotNull Set<ServiceNode> serviceNodes,
                                                         @NotNull ServiceNode me,
-                                                        final long virtualNodeCount){
+                                                        final long virtualNodeCount) {
         return new ConsistingHashTopology(serviceNodes, me, virtualNodeCount);
     }
 }
