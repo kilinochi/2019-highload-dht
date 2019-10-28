@@ -10,11 +10,7 @@ import ru.mail.polis.service.topology.node.VirtualNode;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Charsets.UTF_8;
@@ -132,6 +128,8 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
 
     private static final class MD5Hash implements HashFunction {
 
+        private static final String MD5_HASH = "MD5";
+
         private MD5Hash() {
         }
 
@@ -139,11 +137,11 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
         public long hash(@NotNull final ByteBuffer key) {
             MessageDigest messageDigest;
             try {
-                messageDigest = MessageDigest.getInstance("MD5");
+                messageDigest = MessageDigest.getInstance(MD5_HASH);
                 messageDigest.reset();
                 final ByteBuffer duplicate = key.duplicate();
                 final byte[] bytes = new byte[duplicate.remaining()];
-                key.get(bytes);
+                duplicate.get(bytes);
                 messageDigest.update(bytes);
                 final byte[] digest = messageDigest.digest();
                 long hash = 0;
@@ -153,7 +151,7 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
                 }
                 return hash;
             } catch (NoSuchAlgorithmException e) {
-                logger.error("Exception : ", e.getCause());
+                logger.error("Algorithm of hashing nof found ", e);
                 throw new RuntimeException("You lost all polymers! ", e);
             }
         }

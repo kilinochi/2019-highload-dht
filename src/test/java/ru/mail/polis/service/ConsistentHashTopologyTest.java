@@ -1,6 +1,8 @@
 package ru.mail.polis.service;
 
 import com.google.common.base.Charsets;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +13,11 @@ import ru.mail.polis.utils.BytesUtils;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,10 +27,14 @@ final class ConsistentHashTopologyTest {
 
     private static final int KEYS_COUNT = 1000;
     private static final long VIRTUAL_NODE_COUNT = 65;
-    private static Set<ServiceNode> NODES = null;
-    private static ServiceNode ME = null;
+    private static Set<ServiceNode> NODES;
+    private static ServiceNode ME;
+    private static long EXPECTED_KEYS_PER_NODE;
+    private static int KEYS_DELTA;
+    private static int replicasCount;
 
-    static {
+    @BeforeAll
+    static void setUp() {
         try {
             ME = new ServiceNode(new URL("http://localhost:8097"));
             NODES = Set.of(
@@ -37,15 +45,13 @@ final class ConsistentHashTopologyTest {
                     new ServiceNode(new URL("http://localhost:8102")),
                     new ServiceNode(new URL("http://localhost:8103")),
                     new ServiceNode(new URL("http://localhost:8104")));
+            EXPECTED_KEYS_PER_NODE = KEYS_COUNT / NODES.size();
+            KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.15);
+            replicasCount = NODES.size() - 3;
         } catch (MalformedURLException e) {
             logger.error("Error while create URL ", e.getCause());
         }
     }
-
-    private static final long EXPECTED_KEYS_PER_NODE = KEYS_COUNT / NODES.size();
-    private static final int KEYS_DELTA = (int) (EXPECTED_KEYS_PER_NODE * 0.15);
-    private static final int replicasCount = NODES.size() - 3;
-
 
     @Test
     void consistentTest() {
@@ -84,6 +90,9 @@ final class ConsistentHashTopologyTest {
             final String key = "superPuperKey" + i;
             final ServiceNode[] nodes = topology.replicas(replicasCount, BytesUtils.keyByteBuffer(key));
             assertEquals(replicasCount, nodes.length);
+            //delete duplicates and check size
+            long size = Arrays.stream(nodes).distinct().count();
+            assertEquals(replicasCount, size);
         }
     }
 

@@ -14,6 +14,7 @@
 !checkstyle.xml
 !.codeclimate.yml
 !wrk/*
-!profiler+wrk.tar.xz
+!async-profiler.tar.xz
+!wrk-stages.tar.xz
 # ...even if they are in subdirectories
 !*/
