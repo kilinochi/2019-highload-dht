@@ -139,7 +139,7 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
         public long hash(@NotNull final ByteBuffer key) {
             MessageDigest messageDigest;
             try {
-                messageDigest = MessageDigest.getInstance("MD5"); // MD5 hash
+                messageDigest = MessageDigest.getInstance("MD5"); 
                 messageDigest.reset();
                 final ByteBuffer duplicate = key.duplicate();
                 final byte[] bytes = new byte[duplicate.remaining()];
