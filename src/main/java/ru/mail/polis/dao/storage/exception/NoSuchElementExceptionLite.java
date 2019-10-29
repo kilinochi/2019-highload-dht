@@ -11,7 +11,6 @@ public final class NoSuchElementExceptionLite extends NoSuchElementException {
     /**
      * Custom lite exception extends NoSuchElementException.
      *
-     * 
      * @param mess message with problem cause
      */
     public NoSuchElementExceptionLite(@NotNull final String mess) {

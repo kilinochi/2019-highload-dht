@@ -91,8 +91,8 @@ public final class RestController extends HttpServer implements Service {
                 .findFirst().get();
         final HttpServerConfig httpServerConfig = new HttpServerConfig();
         httpServerConfig.acceptors = new AcceptorConfig[]{acceptorConfig};
-        httpServerConfig.minWorkers = Runtime.getRuntime().availableProcessors();
-        httpServerConfig.maxWorkers = Runtime.getRuntime().availableProcessors();
+        httpServerConfig.minWorkers = Runtime.getRuntime().availableProcessors() + 1;
+        httpServerConfig.maxWorkers = Runtime.getRuntime().availableProcessors() + 1;
         return new RestController(httpServerConfig, dao, nodes, me);
     }
 
