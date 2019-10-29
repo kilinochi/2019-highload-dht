@@ -1,5 +1,5 @@
 # Ignore everything
-
+*
 
 # But not Java files...
 !.gitignore
@@ -19,4 +19,4 @@
 !wrk-stages.tar.xz
 !Profiling.md
 # ...even if they are in subdirectories
-
+!*/
