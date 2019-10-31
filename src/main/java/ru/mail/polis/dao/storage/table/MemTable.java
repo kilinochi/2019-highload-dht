@@ -27,6 +27,7 @@ public final class MemTable implements Table {
 
     /**
      * Get data as Iterator from in-memory storage by key.
+     *
      * @param from is the label which we can find data
      */
     @NotNull

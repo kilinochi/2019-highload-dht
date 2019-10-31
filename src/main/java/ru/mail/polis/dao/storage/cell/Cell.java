@@ -17,8 +17,8 @@ public final class Cell {
     /**
      * Cell is a memory cell in file.
      *
-     * @param key          is the key of this cell by which we can find this Cluster
-     * @param cellValue is the value in this cell
+     * @param key        is the key of this cell by which we can find this Cluster
+     * @param cellValue  is the value in this cell
      * @param generation is generation of this cell
      */
     private Cell(@NotNull final ByteBuffer key,

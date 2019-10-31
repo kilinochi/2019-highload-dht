@@ -17,8 +17,9 @@ public final class BasicTopology implements Topology<ServiceNode> {
 
     /**
      * Simple topology for cluster.
+     *
      * @param nodes is all nodes in clusters
-     * @param me is current cluster
+     * @param me    is current cluster
      */
     BasicTopology(
             @NotNull final Set<ServiceNode> nodes,
@@ -58,7 +59,7 @@ public final class BasicTopology implements Topology<ServiceNode> {
     public ServiceNode[] replicas(final int count, @NotNull final ByteBuffer key) {
         final ServiceNode[] res = new ServiceNode[count];
         int index = (key.hashCode() & Integer.MAX_VALUE) % nodes.length;
-        for(int j = 0; j < count; j++) {
+        for (int j = 0; j < count; j++) {
             res[j] = nodes[index];
             index = (index + 1) % nodes.length;
         }

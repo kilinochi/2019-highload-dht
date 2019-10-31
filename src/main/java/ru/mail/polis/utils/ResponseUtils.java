@@ -21,7 +21,8 @@ public final class ResponseUtils {
 
     /**
      * Send response to client.
-     * @param session is current session
+     *
+     * @param session  is current session
      * @param response is response witch we should be insert in session
      */
     public static void sendResponse(@NotNull final HttpSession session,
@@ -39,18 +40,19 @@ public final class ResponseUtils {
 
     /**
      * Get response from client.
+     *
      * @param cellValue is value witch we should be insert in body response
-     * @param proxy mark current response as proxy response
+     * @param proxy     mark current response as proxy response
      */
     @NotNull
     public static Response from(@NotNull final CellValue cellValue,
-                                 final boolean proxy) {
+                                final boolean proxy) {
         final Response result;
         final CellValue.State state = cellValue.getState();
         switch (state) {
             case REMOVED: {
                 result = new Response(Response.NOT_FOUND, Response.EMPTY);
-                if(proxy) {
+                if (proxy) {
                     result.addHeader(TIMESTAMP_HEADER + cellValue.getTimestamp());
                 }
                 return result;
@@ -59,7 +61,7 @@ public final class ResponseUtils {
                 final ByteBuffer value = cellValue.getData();
                 final byte[] body = BytesUtils.body(value);
                 result = new Response(Response.OK, body);
-                if(proxy) {
+                if (proxy) {
                     result.addHeader(TIMESTAMP_HEADER + cellValue.getTimestamp());
                 }
                 return result;

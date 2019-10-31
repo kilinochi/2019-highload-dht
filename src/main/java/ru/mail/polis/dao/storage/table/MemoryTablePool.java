@@ -147,8 +147,8 @@ public final class MemoryTablePool implements Table, Closeable {
     /**
      * Compact values from all tables with current table.
      *
-     * @param sstables is all tables from disk storage
-     * @param directory is current directory for flush
+     * @param sstables   is all tables from disk storage
+     * @param directory  is current directory for flush
      * @param generation is generation for new SSTable
      */
     public void compact(@NotNull final NavigableMap<Long, SSTable> sstables,
@@ -161,7 +161,7 @@ public final class MemoryTablePool implements Table, Closeable {
         } finally {
             lock.readLock().unlock();
         }
-        compaction(data, directory, sstables ,generation);
+        compaction(data, directory, sstables, generation);
     }
 
     private void compaction(@NotNull final Iterator<Cell> data,
@@ -172,7 +172,7 @@ public final class MemoryTablePool implements Table, Closeable {
         lock.writeLock().lock();
         try {
             SSTable.writeToFile(data, ssTableFileTmp);
-            for(final SSTable ssTable : ssTables.descendingMap().values()) {
+            for (final SSTable ssTable : ssTables.descendingMap().values()) {
                 Files.delete(ssTable.getTable().toPath());
             }
             ssTables.clear();
@@ -185,7 +185,7 @@ public final class MemoryTablePool implements Table, Closeable {
     }
 
     private void enqueueFlush() {
-        if(currentMemoryTable.size() > flushLimit) {
+        if (currentMemoryTable.size() > flushLimit) {
             FlushTable flushTable = null;
             lock.writeLock().lock();
             try {

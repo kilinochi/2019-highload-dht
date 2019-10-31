@@ -8,7 +8,8 @@ public final class NoSuchElementExceptionLite extends NoSuchElementException {
 
     private static final long serialVersionUID = 1L;
 
-    /** Custom lite exception extends NoSuchElementException.
+    /**
+     * Custom lite exception extends NoSuchElementException.
      *
      * @param mess message with problem cause
      */
