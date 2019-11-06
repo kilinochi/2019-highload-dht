@@ -21,10 +21,11 @@ public final class IteratorUtils {
 
     /**
      * Simple helper to collapse data from tables.
-     * @param table is table witch collapse their iters with another tables
+     *
+     * @param table  is table witch collapse their iters with another tables
      * @param tables is collection witch collapse theirs iters with table
-     * @param from is key from we get data
-     * */
+     * @param from   is key from we get data
+     */
     public static Iterator<Cell> data(@NotNull final Table table,
                                       @NotNull final NavigableMap<Long, SSTable> tables,
                                       @NotNull final ByteBuffer from) {
@@ -35,9 +36,10 @@ public final class IteratorUtils {
 
     /**
      * Return latestIterators with removed cells.
-     * @param table is table witch collapse their iters with another tables
+     *
+     * @param table    is table witch collapse their iters with another tables
      * @param ssTables is collection witch collapse theirs iters with table
-     * @param from is key from we get data
+     * @param from     is key from we get data
      */
     public static Iterator<Cell> latestIter(@NotNull final Table table,
                                             @NotNull final NavigableMap<Long, SSTable> ssTables,
@@ -48,14 +50,15 @@ public final class IteratorUtils {
 
     /**
      * Compose data from ssTables.
-     * @param table is table from witch we should be get Iterators by key
+     *
+     * @param table    is table from witch we should be get Iterators by key
      * @param ssTables is other ssTables from witch we should be get Iterators by key
-     * @param from is key from witch we should be get data
-     * */
+     * @param from     is key from witch we should be get data
+     */
     private static List<Iterator<Cell>> compose(
             @NotNull final Table table,
             @NotNull final NavigableMap<Long, SSTable> ssTables,
-            @NotNull final ByteBuffer from){
+            @NotNull final ByteBuffer from) {
         final List<Iterator<Cell>> list = new ArrayList<>();
         list.add(table.iterator(from));
         for (final Table fromOther : ssTables.values()) {
@@ -66,14 +69,16 @@ public final class IteratorUtils {
 
     /**
      * Collapse equals iterators.
+     *
      * @param data is iterators witch we must be collapse
-     * */
+     */
     private static Iterator<Cell> collapseEquals(@NotNull final List<Iterator<Cell>> data) {
         return Iters.collapseEquals(Iterators.mergeSorted(data, Cell.COMPARATOR), Cell::getKey);
     }
-    
+
     /**
      * Filter and get only alive cell.
+     *
      * @param cellIterator is data which we should be filtered.
      */
     private static Iterator<Cell> filterAlive(@NotNull final Iterator<Cell> cellIterator) {

@@ -15,8 +15,8 @@ public final class CellValue implements Comparable<CellValue> {
     /**
      * Persistence cluster value.
      *
-     * @param data is the data of Value
-     * @param state is state of current Value.
+     * @param data      is the data of Value
+     * @param state     is state of current Value.
      * @param timestamp is time witch this value is written
      */
     public CellValue(final ByteBuffer data,
@@ -29,6 +29,7 @@ public final class CellValue implements Comparable<CellValue> {
 
     /**
      * Alive cluster value (cell) in storage.
+     *
      * @param data is data of value
      */
     public static CellValue of(@NotNull final ByteBuffer data) {
@@ -49,7 +50,8 @@ public final class CellValue implements Comparable<CellValue> {
 
     /**
      * Present (alive) value witch we want to read by timestamp.
-     * @param data us data in this value.
+     *
+     * @param data      us data in this value.
      * @param timestamp is timestamp in this value.
      */
     public static CellValue present(
@@ -64,6 +66,7 @@ public final class CellValue implements Comparable<CellValue> {
 
     /**
      * Removed (dead) value in storage.
+     *
      * @param timestamp is timestamp of this value.
      */
     public static CellValue removed(final long timestamp) {

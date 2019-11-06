@@ -14,25 +14,27 @@ import java.util.Iterator;
 import static ru.mail.polis.service.rest.RestController.TIMESTAMP_HEADER;
 
 public final class CellUtils {
-    private CellUtils() {}
+    private CellUtils() {
+    }
 
 
     /**
      * Get CellValue from response.
+     *
      * @param response response from witch we should be get value.
      */
     @NotNull
     public static CellValue getFromResponse(@NotNull final Response response) throws IOException {
         final String timestamp = response.getHeader(TIMESTAMP_HEADER);
-        if(response.getStatus() == 200) {
-            if(timestamp == null) {
+        if (response.getStatus() == 200) {
+            if (timestamp == null) {
                 throw new IllegalArgumentException("Wrong input data!");
             }
             return CellValue.present(
                     ByteBuffer.wrap(response.getBody()), Long.parseLong(timestamp)
             );
-        } else if(response.getStatus() == 404) {
-            if(timestamp == null) {
+        } else if (response.getStatus() == 404) {
+            if (timestamp == null) {
                 return CellValue.absent();
             } else {
                 return CellValue.removed(Long.parseLong(timestamp));
@@ -44,6 +46,7 @@ public final class CellUtils {
 
     /**
      * Merge cells and get latest value from collection.
+     *
      * @param values is collection from witch we should be get value
      */
     @NotNull
@@ -56,8 +59,9 @@ public final class CellUtils {
 
     /**
      * Get latest value from storage.
+     *
      * @param cells is iterator of cells
-     * @param key is key by we get data and merge
+     * @param key   is key by we get data and merge
      */
     @NotNull
     public static CellValue value(final @NotNull ByteBuffer key,
@@ -69,7 +73,7 @@ public final class CellUtils {
 
         final Cell cell = cells.next();
 
-        if(!cell.getKey().equals(key)) {
+        if (!cell.getKey().equals(key)) {
             return CellValue.absent();
         }
 

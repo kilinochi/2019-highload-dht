@@ -3,6 +3,7 @@ package ru.mail.polis.utils;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 import org.jetbrains.annotations.NotNull;
+
 import java.nio.file.Path;
 
 public final class GenerationUtils {
@@ -15,6 +16,7 @@ public final class GenerationUtils {
 
     /**
      * Get generation by name of table.
+     *
      * @param name is the name of file
      */
     private static long getNumericValue(@NotNull final String name) {

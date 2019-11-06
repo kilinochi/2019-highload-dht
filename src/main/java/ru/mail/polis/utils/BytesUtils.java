@@ -10,9 +10,10 @@ public final class BytesUtils {
     }
 
     /**
-    * Bytes wrapper.
-    * @param value is value which we should be wrap
-    */
+     * Bytes wrapper.
+     *
+     * @param value is value which we should be wrap
+     */
     public static ByteBuffer fromInt(final int value) {
         final ByteBuffer result = ByteBuffer.allocate(Integer.BYTES);
         result.putInt(value);
@@ -22,6 +23,7 @@ public final class BytesUtils {
 
     /**
      * Bytes wrapper.
+     *
      * @param value is value which we should be wrap
      */
     public static ByteBuffer fromLong(final long value) {
@@ -32,8 +34,9 @@ public final class BytesUtils {
     }
 
     /**
-     *  Return key as ByteBuffer.
-     * @param id  is key witch we should be convert to ByteBuffer
+     * Return key as ByteBuffer.
+     *
+     * @param id is key witch we should be convert to ByteBuffer
      */
     public static ByteBuffer keyByteBuffer(@NotNull final String id) {
         return ByteBuffer.wrap(getBytesFromKey(id));
@@ -41,6 +44,7 @@ public final class BytesUtils {
 
     /**
      * Transform ByteBuffer to array of bytes.
+     *
      * @param buffer is ByteBuffer which will be transform
      */
     public static byte[] toArray(@NotNull final ByteBuffer buffer) {
@@ -52,6 +56,7 @@ public final class BytesUtils {
 
     /**
      * Get bytes as massive from kee string.
+     *
      * @param id is id from response
      */
     public static byte[] getBytesFromKey(@NotNull final String id) {
@@ -60,6 +65,7 @@ public final class BytesUtils {
 
     /**
      * Return ByteBuffer as body.
+     *
      * @param value is value to bytes massive
      */
     public static byte[] body(@NotNull final ByteBuffer value) {

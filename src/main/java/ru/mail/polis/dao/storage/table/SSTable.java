@@ -211,7 +211,7 @@ public final class SSTable implements Table {
 
         if (timeStamp < 0) {
             return Cell.of(key.slice(),
-                    new CellValue(null, CellValue.State.REMOVED , -timeStamp),
+                    new CellValue(null, CellValue.State.REMOVED, -timeStamp),
                     currentGeneration);
         } else {
             final int valueSize = clusters.getInt((int) offset);
