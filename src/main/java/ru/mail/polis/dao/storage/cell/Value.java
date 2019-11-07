@@ -1,7 +1,8 @@
 package ru.mail.polis.dao.storage.cell;
 
 import org.jetbrains.annotations.NotNull;
-import ru.mail.polis.utils.BytesUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
@@ -15,6 +16,8 @@ import static ru.mail.polis.service.rest.RestController.TIMESTAMP_HEADER;
 public final class Value implements Comparable<Value> {
 
     private static final Value ABSENT = new Value(null, State.ABSENT, -1);
+
+    private static final Logger logger = LoggerFactory.getLogger(Value.class);
 
     private final ByteBuffer data;
     private final long timestamp;
@@ -162,6 +165,11 @@ public final class Value implements Comparable<Value> {
     public static Value fromHttpResponse(@NotNull final HttpResponse<byte[]> response) {
         final OptionalLong timestampOptional = response.headers().firstValueAsLong(TIMESTAMP_HEADER);
         final int statusCode = response.statusCode();
+        if(timestampOptional.isEmpty()) {
+            logger.info("Timestamp is empty");
+        } else {
+            logger.info("Timestamp is not empty");
+        }
 
         if(statusCode == 200) {
             if(timestampOptional.isEmpty()) {

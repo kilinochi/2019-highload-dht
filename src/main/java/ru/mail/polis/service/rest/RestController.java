@@ -2,7 +2,6 @@ package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
-import one.nio.http.HttpClient;
 import one.nio.http.HttpServer;
 import one.nio.http.HttpSession;
 import one.nio.http.HttpServerConfig;
@@ -10,39 +9,52 @@ import one.nio.http.Request;
 import one.nio.http.Response;
 import one.nio.http.Param;
 import one.nio.http.Path;
-import one.nio.net.ConnectionString;
 import one.nio.net.Socket;
 import one.nio.server.AcceptorConfig;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
+import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import ru.mail.polis.Record;
+import ru.mail.polis.client.AsyncHttpClient;
+import ru.mail.polis.client.AsyncHttpClientImpl;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.dao.storage.cell.Cell;
+import ru.mail.polis.dao.storage.cell.Value;
 import ru.mail.polis.utils.BytesUtils;
 import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
+import ru.mail.polis.utils.ResponseUtils;
 
 import static ru.mail.polis.utils.ResponseUtils.build;
 import static ru.mail.polis.utils.ResponseUtils.sendResponse;
 
 public final class RestController extends HttpServer implements Service {
     public static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
-    static final String PROXY_HEADER = "X-OK-Proxy: True";
+    private static final String PROXY_HEADER = "X-OK-Proxy: True";
 
     private static final Logger logger = LoggerFactory.getLogger(RestController.class);
 
-    private final DaoService daoService;
     private final RF defaultRF;
     private final int nodesSize;
+    private final DAO dao;
+    private final Topology<ServiceNode> topology;
+    private final Map<String, AsyncHttpClient> clientPool;
 
     /**
      * Create new instance of RestService for interaction with database.
@@ -59,16 +71,17 @@ public final class RestController extends HttpServer implements Service {
             @NotNull final ServiceNode me) throws IOException {
         super(config);
         this.nodesSize = nodes.size();
-        final Map<String, HttpClient> pool = new HashMap<>();
+        this.clientPool = new HashMap<>();
         this.defaultRF = new RF(nodes.size() / 2 + 1, nodes.size());
         for (final ServiceNode node : nodes.all()) {
             if (!node.equals(me)) {
                 final String url = node.key();
-                assert !pool.containsKey(node.key());
-                pool.put(url, new HttpClient(new ConnectionString(url + "?timeout=100")));
+                assert !clientPool.containsKey(node.key());
+                clientPool.put(url, new AsyncHttpClientImpl(node.key()));
             }
         }
-        this.daoService = new DaoService(dao, pool, nodes, me);
+        this.dao = dao;
+        this.topology  = nodes;
     }
 
     /**
@@ -144,7 +157,7 @@ public final class RestController extends HttpServer implements Service {
             return;
         }
         try {
-            final Iterator<Record> recordIterator = daoService.range(BytesUtils.keyByteBuffer(start),
+            final Iterator<Record> recordIterator = dao.range(BytesUtils.keyByteBuffer(start),
                     end == null ? null : BytesUtils.keyByteBuffer(end));
             ((StorageSession) session).stream(recordIterator);
         } catch (IOException e) {
@@ -192,13 +205,13 @@ public final class RestController extends HttpServer implements Service {
         final boolean finalProxied = proxied;
         switch (request.getMethod()) {
             case Request.METHOD_GET:
-                asyncExecute(session, () -> daoService.get(id, ask, from, finalProxied));
+                asyncExecute(session, () -> get(id, ask, from, finalProxied));
                 break;
             case Request.METHOD_PUT:
-                asyncExecute(session, () -> daoService.upsert(id, request.getBody(), ask, from, finalProxied));
+                asyncExecute(session, () -> upsert(id, request.getBody(), ask, from, finalProxied));
                 break;
             case Request.METHOD_DELETE:
-                asyncExecute(session, () -> daoService.delete(id, ask, from, finalProxied));
+                asyncExecute(session, () -> delete(id, ask, from, finalProxied));
                 break;
             default:
                 logger.warn("Not supported HTTP-method: {}", request.getMethod());
@@ -222,6 +235,119 @@ public final class RestController extends HttpServer implements Service {
                 }
             }
         });
+    }
+
+    private Response get(@NotNull final String id,
+                         final int acks,
+                         final int from,
+                         final boolean proxy) {
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        final Iterator<Cell> cellIterator = dao.latestIterator(key);
+        if(proxy) {
+            final Value value = Value.valueOf(cellIterator, key);
+            return ResponseUtils.from(value, proxy);
+        }
+
+        final Collection<Value> valuesFromResponses = new ArrayList<>();
+
+        final ServiceNode[] nodes = topology.replicas(from, key);
+        int asks = 0;
+        for(ServiceNode node : nodes) {
+            if(topology.isMe(node)) {
+                valuesFromResponses.add(Value.valueOf(cellIterator, key));
+                asks++;
+            } else {
+                try {
+                    CompletableFuture<HttpResponse<byte[]>> future =
+                            clientPool.get(node.key())
+                                    .get(id);
+                    HttpResponse<byte[]> response = future.get(2, TimeUnit.SECONDS);
+                    Value value = Value.fromHttpResponse(response);
+                    valuesFromResponses.add(value);
+                    asks++;
+                } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                    logger.error("Can't wait in get method ", e);
+                }
+            }
+        }
+        if(asks >= acks) {
+            Value mergeValue = Value.merge(valuesFromResponses);
+            return ResponseUtils.from(mergeValue, proxy);
+        }
+        else {
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+        }
+    }
+
+    private Response delete(@NotNull final String id,
+                            final int acks,
+                            final int from,
+                            final boolean proxy) throws IOException {
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        if(proxy) {
+            dao.remove(key);
+            return new Response(Response.ACCEPTED, Response.EMPTY);
+        }
+
+        final ServiceNode[] nodes = topology.replicas(from, key);
+        int asks = 0;
+        for (ServiceNode node : nodes) {
+            if(topology.isMe(node)) {
+                dao.remove(key);
+                asks++;
+            } else {
+                try {
+                    clientPool
+                            .get(node.key())
+                            .delete(id)
+                            .get(2, TimeUnit.SECONDS);
+                    asks++;
+                } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                    logger.error("Cant get response in delete method ", e);
+                }
+            }
+        }
+        if(asks >= acks) {
+            return new Response(Response.ACCEPTED, Response.EMPTY);
+        } else {
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+        }
+    }
+
+    private Response upsert(@NotNull final String id,
+                            final byte[] body,
+                            final int acks,
+                            final int from,
+                            final boolean proxy) throws IOException {
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        final ByteBuffer value = ByteBuffer.wrap(body);
+        if(proxy) {
+            dao.upsert(key, value);
+            return new Response(Response.OK, Response.EMPTY);
+        }
+
+        final ServiceNode[] nodes = topology.replicas(from, key);
+        int asks = 0;
+        for(ServiceNode node : nodes) {
+            if(topology.isMe(node)) {
+                dao.upsert(key, value);
+                asks++;
+            } else {
+                try {
+                    clientPool.get(node.key())
+                            .upsert(body, id)
+                            .get(2, TimeUnit.SECONDS);
+                    asks++;
+                } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                    logger.error("Cant get response in upsert method, ", e);
+                }
+            }
+        }
+        if(asks >= acks) {
+            return new Response(Response.CREATED, Response.EMPTY);
+        } else {
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+        }
     }
 
     @FunctionalInterface
