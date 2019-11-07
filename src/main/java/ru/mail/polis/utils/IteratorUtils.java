@@ -4,7 +4,7 @@ import com.google.common.collect.Iterators;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.Iters;
 import ru.mail.polis.dao.storage.cell.Cell;
-import ru.mail.polis.dao.storage.cell.CellValue;
+import ru.mail.polis.dao.storage.cell.Value;
 import ru.mail.polis.dao.storage.table.SSTable;
 import ru.mail.polis.dao.storage.table.Table;
 
@@ -85,7 +85,7 @@ public final class IteratorUtils {
         return Iterators.filter(
                 cellIterator, cell -> {
                     assert cell != null;
-                    return cell.getCellValue().getState() != CellValue.State.REMOVED;
+                    return cell.getValue().getState() != Value.State.REMOVED;
                 }
         );
     }

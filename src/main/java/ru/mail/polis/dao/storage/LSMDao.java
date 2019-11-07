@@ -84,7 +84,7 @@ public final class LSMDao implements DAO {
     public Iterator<Record> iterator(@NotNull final ByteBuffer from) throws IOException {
         return Iterators.transform(cellIterator(from), cluster -> {
             assert cluster != null;
-            return Record.of(cluster.getKey(), cluster.getCellValue().getData());
+            return Record.of(cluster.getKey(), cluster.getValue().getData());
         });
     }
 

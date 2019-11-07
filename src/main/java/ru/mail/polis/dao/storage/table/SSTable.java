@@ -3,7 +3,7 @@ package ru.mail.polis.dao.storage.table;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.utils.BytesUtils;
 import ru.mail.polis.dao.storage.cell.Cell;
-import ru.mail.polis.dao.storage.cell.CellValue;
+import ru.mail.polis.dao.storage.cell.Value;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,19 +52,19 @@ public final class SSTable implements Table {
                 offset += keySize;
 
                 // Value
-                final CellValue value = cell.getCellValue();
+                final Value value = cell.getValue();
 
                 // Write Timestamp
-                if (value.getState() == CellValue.State.REMOVED) {
-                    fileChannel.write(BytesUtils.fromLong(-cell.getCellValue().getTimestamp()));
+                if (value.getState() == Value.State.REMOVED) {
+                    fileChannel.write(BytesUtils.fromLong(-cell.getValue().getTimestamp()));
                 } else {
-                    fileChannel.write(BytesUtils.fromLong(cell.getCellValue().getTimestamp()));
+                    fileChannel.write(BytesUtils.fromLong(cell.getValue().getTimestamp()));
                 }
                 offset += Long.BYTES; // 8 byte
 
                 // Write Value Size and Value
 
-                if (value.getState() != CellValue.State.REMOVED) {
+                if (value.getState() != Value.State.REMOVED) {
                     final ByteBuffer valueData = value.getData();
                     final int valueSize = value.getData().remaining();
                     fileChannel.write(BytesUtils.fromInt(valueSize));
@@ -211,7 +211,7 @@ public final class SSTable implements Table {
 
         if (timeStamp < 0) {
             return Cell.of(key.slice(),
-                    new CellValue(null, CellValue.State.REMOVED, -timeStamp),
+                    new Value(null, Value.State.REMOVED, -timeStamp),
                     currentGeneration);
         } else {
             final int valueSize = clusters.getInt((int) offset);
@@ -222,8 +222,8 @@ public final class SSTable implements Table {
                     .position((int) offset)
                     .limit((int) (offset + valueSize));
             return Cell.of(key.slice(),
-                    new CellValue(value.slice(),
-                            CellValue.State.PRESENT, timeStamp), currentGeneration);
+                    new Value(value.slice(),
+                            Value.State.PRESENT, timeStamp), currentGeneration);
         }
     }
 }

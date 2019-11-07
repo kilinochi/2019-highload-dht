@@ -8,29 +8,29 @@ import java.util.Comparator;
 public final class Cell {
 
     public static final Comparator<Cell> COMPARATOR = Comparator.comparing(Cell::getKey)
-            .thenComparing(Cell::getCellValue).thenComparing(Cell::getGeneration, Comparator.reverseOrder());
+            .thenComparing(Cell::getValue).thenComparing(Cell::getGeneration, Comparator.reverseOrder());
 
     private final ByteBuffer key;
-    private final CellValue cellValue;
+    private final Value value;
     private final long generation;
 
     /**
      * Cell is a memory cell in file.
      *
      * @param key        is the key of this cell by which we can find this Cluster
-     * @param cellValue  is the value in this cell
+     * @param value  is the value in this cell
      * @param generation is generation of this cell
      */
     private Cell(@NotNull final ByteBuffer key,
-                 @NotNull final CellValue cellValue,
+                 @NotNull final Value value,
                  final long generation) {
         this.key = key;
-        this.cellValue = cellValue;
+        this.value = value;
         this.generation = generation;
     }
 
     public static Cell of(@NotNull final ByteBuffer key,
-                          @NotNull final CellValue value,
+                          @NotNull final Value value,
                           final long generation) {
         return new Cell(key, value, generation);
     }
@@ -39,8 +39,8 @@ public final class Cell {
         return key.asReadOnlyBuffer();
     }
 
-    public CellValue getCellValue() {
-        return cellValue;
+    public Value getValue() {
+        return value;
     }
 
     private long getGeneration() {

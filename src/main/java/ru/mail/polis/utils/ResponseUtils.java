@@ -1,11 +1,12 @@
 package ru.mail.polis.utils;
 
 import one.nio.http.HttpSession;
+import one.nio.http.Request;
 import one.nio.http.Response;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.mail.polis.dao.storage.cell.CellValue;
+import ru.mail.polis.dao.storage.cell.Value;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -13,6 +14,8 @@ import java.nio.ByteBuffer;
 import static ru.mail.polis.service.rest.RestController.TIMESTAMP_HEADER;
 
 public final class ResponseUtils {
+
+    static final String PROXY_HEADER = "X-OK-Proxy";
 
     private static final Logger logger = LoggerFactory.getLogger(ResponseUtils.class);
 
@@ -45,10 +48,10 @@ public final class ResponseUtils {
      * @param proxy     mark current response as proxy response
      */
     @NotNull
-    public static Response from(@NotNull final CellValue cellValue,
+    public static Response from(@NotNull final Value cellValue,
                                 final boolean proxy) {
         final Response result;
-        final CellValue.State state = cellValue.getState();
+        final Value.State state = cellValue.getState();
         switch (state) {
             case REMOVED: {
                 result = new Response(Response.NOT_FOUND, Response.EMPTY);
@@ -76,5 +79,9 @@ public final class ResponseUtils {
 
     public static Response build(@NotNull final String code, @NotNull final byte[] body) {
         return new Response(code, body);
+    }
+
+    public static boolean isProxied(@NotNull final Request request) {
+        return request.getHeader(PROXY_HEADER) != null;
     }
 }
