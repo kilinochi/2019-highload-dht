@@ -32,17 +32,17 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
     }
 
     @Override
-    public CompletableFuture<HttpResponse<byte[]>> upsert(@NotNull byte[] value, @NotNull String id) {
+    public CompletableFuture<HttpResponse<Void>> upsert(@NotNull byte[] value, @NotNull String id) {
         logger.info("ASYNC REQUEST PUT with uri = {}, id = {} ", url, id);
         final HttpRequest httpRequest = builder(id).PUT(ofBytes(value)).build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding());
     }
 
     @Override
-    public CompletableFuture<HttpResponse<byte[]>> delete(@NotNull final String id) {
+    public CompletableFuture<HttpResponse<Void>> delete(@NotNull final String id) {
         logger.info("ASYNC REQUEST DELETE with uri = {}, id = {} ", url, id);
         final HttpRequest httpRequest = builder(id).DELETE().build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding());
     }
 
     @Override
