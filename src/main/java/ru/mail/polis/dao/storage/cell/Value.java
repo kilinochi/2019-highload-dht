@@ -1,9 +1,6 @@
 package ru.mail.polis.dao.storage.cell;
 
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
@@ -12,13 +9,11 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Locale;
 
-import static ru.mail.polis.service.rest.RestController.TIMESTAMP_HEADER;
+import static ru.mail.polis.utils.ConstUtils.TIMESTAMP_HEADER;
 
 public final class Value implements Comparable<Value> {
 
     private static final Value ABSENT = new Value(null, State.ABSENT, -1);
-
-    private static final Logger logger = LoggerFactory.getLogger(Value.class);
 
     private final ByteBuffer data;
     private final long timestamp;
@@ -166,17 +161,10 @@ public final class Value implements Comparable<Value> {
     public static Value fromHttpResponse(@NotNull final HttpResponse<byte[]> response) {
 
         final HttpHeaders headers = response.headers();
-        logger.info("Headers in http response = {}", headers.toString());
 
         final String timestamp = headers.firstValue(
                 TIMESTAMP_HEADER.toLowerCase(Locale.ENGLISH)).orElse(null);
         final int statusCode = response.statusCode();
-
-        if(timestamp == null) {
-            logger.info("Timestamp is empty");
-        } else {
-            logger.info("Timestamp is not empty");
-        }
 
         if(statusCode == 200) {
             if(timestamp == null) {
@@ -194,5 +182,4 @@ public final class Value implements Comparable<Value> {
             return Value.removed(ts);
         }
     }
-
 }

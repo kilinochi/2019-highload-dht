@@ -28,13 +28,12 @@ import ru.mail.polis.service.Service;
 import ru.mail.polis.service.rest.session.StorageSession;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
+import ru.mail.polis.utils.ConstUtils;
 
 import static ru.mail.polis.utils.ResponseUtils.build;
 import static ru.mail.polis.utils.ResponseUtils.sendResponse;
 
 public final class RestController extends HttpServer implements Service {
-    public static final String TIMESTAMP_HEADER = "X-OK-Timestamp";
-    private static final String PROXY_HEADER = "X-OK-Proxy: True";
 
     private static final Logger logger = LoggerFactory.getLogger(RestController.class);
 
@@ -158,7 +157,7 @@ public final class RestController extends HttpServer implements Service {
 
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         boolean proxied = false;
-        if (request.getHeader(PROXY_HEADER) != null) {
+        if (request.getHeader(ConstUtils.PROXY_HEADER) != null) {
             proxied = true;
         }
         boolean finalProxied = proxied;

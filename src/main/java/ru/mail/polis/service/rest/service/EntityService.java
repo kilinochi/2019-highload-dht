@@ -1,7 +1,5 @@
 package ru.mail.polis.service.rest.service;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import one.nio.http.HttpSession;
 import one.nio.http.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -9,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.client.AsyncHttpClient;
-import ru.mail.polis.client.AsyncHttpClientImpl;
 import ru.mail.polis.dao.DAO;
 import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.Value;
@@ -22,17 +19,9 @@ import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class EntityService {
 
@@ -70,9 +59,9 @@ public final class EntityService {
             } else {
                try {
                    client.delete(id, node.key())
-                           .get(200, TimeUnit.MILLISECONDS);
+                           .get();
                    asks++;
-               } catch (InterruptedException | ExecutionException | TimeoutException e){
+               } catch (InterruptedException | ExecutionException e){
                    logger.error("Can't wait response from node in url {} ", node.key(), e);
                }
             }
@@ -107,9 +96,9 @@ public final class EntityService {
                 try {
                     client
                             .upsert(body,id, node.key())
-                            .get(200, TimeUnit.MILLISECONDS);
+                            .get();
                     asks++;
-                } catch (InterruptedException | ExecutionException | TimeoutException e){
+                } catch (InterruptedException | ExecutionException e){
                     logger.error("Can't wait response from node in url {} ", node.key(), e);
                 }
             }
@@ -146,11 +135,11 @@ public final class EntityService {
                try {
                    final HttpResponse<byte[]> response = client
                            .get(id, node.key())
-                           .get(200, TimeUnit.MILLISECONDS);
+                           .get();
                    final Value valueFromResponse = Value.fromHttpResponse(response);
                    values.add(valueFromResponse);
                    asks++;
-               } catch (InterruptedException | ExecutionException | TimeoutException e ){
+               } catch (InterruptedException | ExecutionException e){
                    logger.error("Can't wait response from node in url {} ", node.key(), e);
                }
             }
