@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public final class EntityService {
@@ -136,8 +137,8 @@ public final class EntityService {
                    final HttpResponse<byte[]> response = client
                            .get(id, node.key())
                            .get();
-                   final Value valueFromResponse = Value.fromHttpResponse(response);
-                   values.add(valueFromResponse);
+                   final Value value = Value.fromHttpResponse(response);
+                   values.add(value);
                    asks++;
                } catch (InterruptedException | ExecutionException e){
                    logger.error("Can't wait response from node in url {} ", node.key(), e);
