@@ -3,6 +3,7 @@ package ru.mail.polis.client;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.mail.polis.dao.storage.cell.Value;
 import ru.mail.polis.utils.ConstUtils;
 
 import java.net.URI;
@@ -26,21 +27,36 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
     }
 
     @Override
-    public CompletableFuture<HttpResponse<Void>> upsert(@NotNull byte[] value, @NotNull String id, @NotNull final String url) {
+    public CompletableFuture<Void> upsert(@NotNull byte[] value, @NotNull String id, @NotNull final String url) {
         final HttpRequest httpRequest = builder(id, url).PUT(ofBytes(value)).build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding());
+        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding())
+                .thenApply(HttpResponse::body)
+                .exceptionally(throwable -> {
+                    logger.error("Error while upsert async value = ", throwable);
+                    return null;
+                });
     }
 
     @Override
-    public CompletableFuture<HttpResponse<Void>> delete(@NotNull final String id, @NotNull final String url) {
+    public CompletableFuture<Void> delete(@NotNull final String id, @NotNull final String url) {
         final HttpRequest httpRequest = builder(id, url).DELETE().build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding());
+        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding())
+                .thenApply(HttpResponse::body)
+                .exceptionally(throwable -> {
+                    logger.error("Error while delete async value = ", throwable);
+                    return null;
+                });
     }
 
     @Override
-    public CompletableFuture<HttpResponse<byte[]>> get(@NotNull final String id, @NotNull final String url) {
+    public CompletableFuture<Value> get(@NotNull final String id, @NotNull final String url) {
         final HttpRequest httpRequest = builder(id, url).GET().build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofByteArray())
+                .thenApply(Value::fromHttpResponse)
+                .exceptionally(throwable -> {
+                    logger.error("Error while get async value = ", throwable);
+                    return null;
+                });
     }
 
     private HttpRequest.Builder builder(@NotNull final String id, @NotNull final String url) {

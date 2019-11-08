@@ -106,6 +106,12 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
         return nodesTailMap;
     }
 
+    @NotNull
+    @Override
+    public ServiceNode whoAmI() {
+        return me;
+    }
+
     @Override
     public boolean isMe(@NotNull final ServiceNode node) {
         return me.key().equals(node.key());

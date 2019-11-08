@@ -9,6 +9,7 @@ import ru.mail.polis.dao.storage.cell.Value;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 
 import static ru.mail.polis.utils.ConstUtils.TIMESTAMP_HEADER;
 
@@ -72,6 +73,12 @@ public final class ResponseUtils {
             default:
                 throw new IllegalArgumentException("Wrong input data!");
         }
+    }
+
+    @NotNull
+    public static Response responseFromValues(@NotNull final Collection<Value> values) {
+        final Value value = Value.merge(values);
+        return from(value, false);
     }
 
     public static Response build(@NotNull final String code, @NotNull final byte[] body) {

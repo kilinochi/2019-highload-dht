@@ -67,4 +67,10 @@ public final class BasicTopology implements Topology<ServiceNode> {
         }
         return res;
     }
+
+    @NotNull
+    @Override
+    public ServiceNode whoAmI() {
+        return me;
+    }
 }

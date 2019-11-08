@@ -31,6 +31,9 @@ public interface Topology<T extends Node> {
     }
 
     @NotNull
+    T whoAmI();
+
+    @NotNull
     static Topology<ServiceNode> consistentHashTopology(@NotNull Set<ServiceNode> serviceNodes,
                                                         @NotNull ServiceNode me,
                                                         final long virtualNodeCount) {
