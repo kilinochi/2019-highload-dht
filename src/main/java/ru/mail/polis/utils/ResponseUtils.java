@@ -56,6 +56,7 @@ public final class ResponseUtils {
             case REMOVED: {
                 result = new Response(Response.NOT_FOUND, Response.EMPTY);
                 if (proxy) {
+                    logger.info("response is prosy, value is removed, add ts is header {}", cellValue.getTimestamp());
                     result.addHeader(TIMESTAMP_HEADER + cellValue.getTimestamp());
                 }
                 return result;
@@ -65,6 +66,7 @@ public final class ResponseUtils {
                 final byte[] body = BytesUtils.body(value);
                 result = new Response(Response.OK, body);
                 if (proxy) {
+                    logger.info("response is prosy, value is alive, add ts is header {}", cellValue.getTimestamp());
                     result.addHeader(TIMESTAMP_HEADER + cellValue.getTimestamp());
                 }
                 return result;

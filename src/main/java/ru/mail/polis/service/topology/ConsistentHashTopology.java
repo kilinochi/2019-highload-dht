@@ -78,7 +78,7 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
 
     @NotNull
     @Override
-    public ServiceNode[] replicas(final int count,
+    public List<ServiceNode> replicas(final int count,
                                   @NotNull final ByteBuffer key) {
         final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
         final List<ServiceNode> nodesTailMap =
@@ -103,7 +103,7 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
                             .collect(Collectors.toCollection(ArrayList::new));
             nodesTailMap.addAll(startHeadNodes);
         }
-        return nodesTailMap.toArray(ServiceNode[]::new);
+        return nodesTailMap;
     }
 
     @Override

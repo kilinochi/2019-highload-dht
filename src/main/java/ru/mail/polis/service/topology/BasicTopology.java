@@ -4,7 +4,9 @@ import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.service.topology.node.ServiceNode;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 public final class BasicTopology implements Topology<ServiceNode> {
@@ -56,11 +58,11 @@ public final class BasicTopology implements Topology<ServiceNode> {
 
     @NotNull
     @Override
-    public ServiceNode[] replicas(final int count, @NotNull final ByteBuffer key) {
-        final ServiceNode[] res = new ServiceNode[count];
+    public List<ServiceNode> replicas(final int count, @NotNull final ByteBuffer key) {
+        final List<ServiceNode> res = new ArrayList<>();
         int index = (key.hashCode() & Integer.MAX_VALUE) % nodes.length;
         for (int j = 0; j < count; j++) {
-            res[j] = nodes[index];
+            res.add(nodes[index]);
             index = (index + 1) % nodes.length;
         }
         return res;

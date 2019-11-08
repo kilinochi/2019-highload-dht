@@ -4,11 +4,14 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 import static ru.mail.polis.service.rest.RestController.TIMESTAMP_HEADER;
@@ -65,7 +68,7 @@ public final class Value implements Comparable<Value> {
      * @param data      us data in this value.
      * @param timestamp is timestamp in this value.
      */
-    public static Value present(
+    private static Value present(
             @NotNull final ByteBuffer data,
             final long timestamp) {
         return new Value(
@@ -80,7 +83,7 @@ public final class Value implements Comparable<Value> {
      *
      * @param timestamp is timestamp of this value.
      */
-    public static Value removed(final long timestamp) {
+    private static Value removed(final long timestamp) {
         return new Value(
                 null,
                 State.REMOVED,
@@ -105,7 +108,7 @@ public final class Value implements Comparable<Value> {
         return -Long.compare(timestamp, o.timestamp);
     }
 
-    public static Value absent() {
+    private static Value absent() {
         return ABSENT;
     }
 
@@ -163,27 +166,33 @@ public final class Value implements Comparable<Value> {
      */
     @NotNull
     public static Value fromHttpResponse(@NotNull final HttpResponse<byte[]> response) {
-        final OptionalLong timestampOptional = response.headers().firstValueAsLong(TIMESTAMP_HEADER);
+
+        final HttpHeaders headers = response.headers();
+        logger.info("Headers in http response = {}", headers.toString());
+
+        final String timestamp = headers.firstValue(
+                TIMESTAMP_HEADER.toLowerCase(Locale.ENGLISH)).orElse(null);
         final int statusCode = response.statusCode();
-        if(timestampOptional.isEmpty()) {
+
+        if(timestamp == null) {
             logger.info("Timestamp is empty");
         } else {
             logger.info("Timestamp is not empty");
         }
 
         if(statusCode == 200) {
-            if(timestampOptional.isEmpty()) {
+            if(timestamp == null) {
                 throw new IllegalArgumentException("Timestamp must be not empty if status code is 200!");
             }
-            final long ts = timestampOptional.getAsLong();
+            final long ts = Long.parseLong(timestamp);
             final byte[] body = response.body();
             final ByteBuffer data = ByteBuffer.wrap(body);
             return Value.present(data, ts);
         } else {
-            if(timestampOptional.isEmpty()) {
+            if(timestamp == null) {
                 return Value.absent();
             }
-            final long ts = timestampOptional.getAsLong();
+            final long ts = Long.parseLong(timestamp);
             return Value.removed(ts);
         }
     }

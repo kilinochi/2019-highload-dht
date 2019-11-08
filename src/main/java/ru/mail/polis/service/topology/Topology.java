@@ -6,6 +6,7 @@ import ru.mail.polis.service.topology.node.ServiceNode;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Set;
 
 @ThreadSafe
@@ -21,7 +22,7 @@ public interface Topology<T extends Node> {
     int size();
 
     @NotNull
-    T[] replicas(final int count, @NotNull final ByteBuffer key);
+    List<T> replicas(final int count, @NotNull final ByteBuffer key);
 
     @NotNull
     static Topology<ServiceNode> basic(@NotNull Set<ServiceNode> serviceNodes,

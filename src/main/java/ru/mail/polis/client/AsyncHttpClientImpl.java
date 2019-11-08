@@ -3,13 +3,15 @@ package ru.mail.polis.client;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.mail.polis.utils.ConstUtils;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 public final class AsyncHttpClientImpl implements AsyncHttpClient {
 
@@ -19,25 +21,28 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
     private final HttpClient client;
     private final String url;
 
-    public AsyncHttpClientImpl(@NotNull final String url) {
+    public AsyncHttpClientImpl(@NotNull final String url,
+                               @NotNull final Executor executor) {
         client = HttpClient
                 .newBuilder()
+                .executor(executor)
+                .version(HttpClient.Version.HTTP_2)
                 .build();
         this.url = url;
     }
 
     @Override
-    public CompletableFuture<HttpResponse<Void>> upsert(@NotNull byte[] value, @NotNull String id) {
+    public CompletableFuture<HttpResponse<byte[]>> upsert(@NotNull byte[] value, @NotNull String id) {
         logger.info("ASYNC REQUEST PUT with uri = {}, id = {} ", url, id);
         final HttpRequest httpRequest = builder(id).PUT(ofBytes(value)).build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding());
+        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
     }
 
     @Override
-    public CompletableFuture<HttpResponse<Void>> delete(@NotNull final String id) {
+    public CompletableFuture<HttpResponse<byte[]>> delete(@NotNull final String id) {
         logger.info("ASYNC REQUEST DELETE with uri = {}, id = {} ", url, id);
         final HttpRequest httpRequest = builder(id).DELETE().build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding());
+        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
     }
 
     @Override
@@ -51,7 +56,7 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
         return HttpRequest.newBuilder()
                 .uri(URI.create(url + ENTITY_PATH_ID + id))
                 .timeout(Duration.ofMillis(150))
-                .header("X-OK-Proxy", "True");
+                .header(ConstUtils.PROXY_HEADER_NAME, ConstUtils.PROXY_HEADER_VALUE);
     }
 
     private HttpRequest.BodyPublisher ofBytes(@NotNull final byte[] body) {

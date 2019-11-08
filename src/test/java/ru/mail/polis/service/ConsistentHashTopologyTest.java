@@ -12,8 +12,8 @@ import ru.mail.polis.utils.BytesUtils;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.Map;
 
@@ -86,10 +86,10 @@ final class ConsistentHashTopologyTest {
         final Topology<ServiceNode> topology = createTopology();
         for (long i = 0; i < KEYS_COUNT; i++) {
             final String key = "superPuperKey" + i;
-            final ServiceNode[] nodes = topology.replicas(replicasCount, BytesUtils.keyByteBuffer(key));
-            assertEquals(replicasCount, nodes.length);
+            final List<ServiceNode> nodes = topology.replicas(replicasCount, BytesUtils.keyByteBuffer(key));
+            assertEquals(replicasCount, nodes.size());
             //delete duplicates and check size
-            long size = Arrays.stream(nodes).distinct().count();
+            long size = nodes.stream().distinct().count();
             assertEquals(replicasCount, size);
         }
     }
