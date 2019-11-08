@@ -34,207 +34,132 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static ru.mail.polis.utils.ResponseUtils.sendResponse;
-
 public final class EntityService {
 
     private static final Logger logger = LoggerFactory.getLogger(EntityService.class);
 
     private final DAO dao;
     private final Topology<ServiceNode> topology;
-    private final Map<String, AsyncHttpClient> clientPool;
+    private final AsyncHttpClient client;
 
     public EntityService(@NotNull final DAO dao,
                   @NotNull final Topology<ServiceNode> topology) {
         this.dao = dao;
-        final Executor workers = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 1,
-                new ThreadFactoryBuilder().setNameFormat("service-worker-%d").build());
         this.topology = topology;
-        this.clientPool = new HashMap<>();
-        for (final ServiceNode node : topology.all()) {
-            if (!topology.isMe(node)) {
-                final String url = node.key();
-                assert !clientPool.containsKey(node.key());
-                clientPool.put(url, new AsyncHttpClientImpl(node.key(), workers));
-            }
-        }
+        this.client = AsyncHttpClient.create();
     }
 
-    public void delete(@NotNull final HttpSession session,
+    public Response delete(
                 @NotNull final String id,
                 @NotNull final ByteBuffer key,
                 final int acks,
                 final int from,
-                final boolean proxy) {
+                final boolean proxy) throws IOException {
         if(proxy) {
-            CompletableFuture.runAsync(() -> {
-                try {
-                    dao.remove(key);
-                    sendResponse(session, new Response(Response.ACCEPTED, Response.EMPTY));
-                } catch (IOException e) {
-                    logger.error("Error while delete local storage, ", e);
-                    sendResponse(session, new Response(Response.INTERNAL_ERROR, Response.EMPTY));
-                }
-            }).exceptionally(
-                    throwable -> {
-                        logger.error("Error while delete to storage, ", throwable);
-                        return null;
-                    }
-            );
-            return;
+            dao.remove(key);
+            return new Response(Response.ACCEPTED, Response.EMPTY);
         }
-
-       final AtomicInteger asks = new AtomicInteger();
+       int asks = 0;
 
        final List<ServiceNode> nodes = topology.replicas(from, key);
 
        for (final ServiceNode node : nodes) {
             if(topology.isMe(node)) {
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        dao.remove(key);
-                        asks.incrementAndGet();
-                    } catch (IOException e) {
-                        logger.error("Error while delete value from local storage : ", e);
-                    }
-                }).exceptionally(throwable -> {
-                    logger.error("Error while delete value from local storage : ", throwable);
-                    return null;
-                });
+                dao.remove(key);
+                asks++;
             } else {
                try {
-                   clientPool.get(node.key())
-                           .delete(id)
-                           .get(100, TimeUnit.MILLISECONDS);
-                   asks.incrementAndGet();
+                   client.delete(id, node.key())
+                           .get(200, TimeUnit.MILLISECONDS);
+                   asks++;
                } catch (InterruptedException | ExecutionException | TimeoutException e){
                    logger.error("Can't wait response from node in url {} ", node.key(), e);
                }
             }
        }
-       if(asks.get() >= acks) {
-            ResponseUtils.sendResponse(session, new Response(Response.ACCEPTED, Response.EMPTY));
+       if(asks >= acks) {
+           return new Response(Response.ACCEPTED, Response.EMPTY);
        } else {
-           ResponseUtils.sendResponse(session, new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY));
+           return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
        }
     }
 
-    public void upsert(@NotNull final HttpSession session,
-                @NotNull final String id,
+    public Response upsert(@NotNull final String id,
                 @NotNull final ByteBuffer key,
                 @NotNull final byte[] body,
                 final int acks,
                 final int from,
-                final boolean proxy) {
+                final boolean proxy) throws IOException {
         final ByteBuffer value = ByteBuffer.wrap(body);
         if(proxy) {
-            CompletableFuture.runAsync(() -> {
-                try {
-                    dao.upsert(key, value);
-                    sendResponse(session, new Response(Response.CREATED, Response.EMPTY));
-                } catch (IOException e) {
-                   sendResponse(session, new Response(Response.INTERNAL_ERROR, Response.EMPTY));
-                }
-            }).exceptionally(throwable -> {
-                logger.error("Error while local upsert value");
-                return null;
-            });
-            return;
+            dao.upsert(key, value);
+            return new Response(Response.CREATED, Response.EMPTY);
         }
-        final AtomicInteger asks = new AtomicInteger();
+        int asks = 0;
 
         final List<ServiceNode> nodes = topology.replicas(from, key);
 
         for (final ServiceNode node : nodes) {
             if(topology.isMe(node)) {
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        dao.upsert(key, value);
-                        asks.incrementAndGet();
-                    } catch (IOException e) {
-                        logger.error("Error while delete value from local storage : ", e);
-                    }
-                }).exceptionally(throwable -> {
-                    logger.error("Error while delete value from local storage : ", throwable);
-                    return null;
-                });
+                dao.upsert(key, value);
+                asks++;
             } else {
                 try {
-                    clientPool.get(node.key())
-                            .upsert(body,id)
-                            .get(100, TimeUnit.MILLISECONDS);
-                    asks.incrementAndGet();
+                    client
+                            .upsert(body,id, node.key())
+                            .get(200, TimeUnit.MILLISECONDS);
+                    asks++;
                 } catch (InterruptedException | ExecutionException | TimeoutException e){
                     logger.error("Can't wait response from node in url {} ", node.key(), e);
                 }
             }
         }
-        if(asks.get() >= acks) {
-            ResponseUtils.sendResponse(session, new Response(Response.CREATED, Response.EMPTY));
+        if(asks >= acks) {
+            return new Response(Response.CREATED, Response.EMPTY);
         } else {
-            ResponseUtils.sendResponse(session, new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY));
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
         }
     }
 
-    public void get(@NotNull final HttpSession session,
+    public Response get(
              @NotNull final String id,
              @NotNull final ByteBuffer key,
              final int acks,
              final int from,
              final boolean proxy) {
+        final Iterator<Cell> cellIterator = dao.latestIterator(key);
         if (proxy) {
-            CompletableFuture.runAsync(
-                    () -> {
-                        final Iterator<Cell> cellIterator = dao.latestIterator(key);
-                        final Response response = ResponseUtils.from(
-                                Value.valueOf(cellIterator, key), true
-                        );
-                        sendResponse(session, response);
-                    }
-            ).exceptionally(throwable -> {
-                logger.error("Error while send local response = ", throwable);
-                return null;
-            });
-            return;
+            final Value value = Value.valueOf(cellIterator, key);
+            return ResponseUtils.from(value, proxy);
         }
 
         final List<ServiceNode> nodes = topology.replicas(from, key);
         final Collection<Value> values = new ArrayList<>();
-        final AtomicInteger asks = new AtomicInteger(0);
+        int asks = 0;
 
         for (final ServiceNode node : nodes) {
             if(topology.isMe(node)) {
-                CompletableFuture.runAsync(
-                        () -> {
-                            final Iterator<Cell> cellIterator = dao.latestIterator(key);
-                            final Value value =
-                                    Value.valueOf(cellIterator, key);
-                            values.add(value);
-                            asks.incrementAndGet();
-                        }
-                ).exceptionally(throwable -> {
-                    logger.error("Error while send local response = ", throwable);
-                    return null;
-                });
+                final Value value = Value.valueOf(cellIterator, key);
+                values.add(value);
+                asks++;
             } else {
                try {
-                   final HttpResponse<byte[]> response = clientPool.get(node.key())
-                           .get(id)
-                           .get(100, TimeUnit.MILLISECONDS);
-                   final Value value = Value.fromHttpResponse(response);
-                   values.add(value);
-                   asks.incrementAndGet();
+                   final HttpResponse<byte[]> response = client
+                           .get(id, node.key())
+                           .get(200, TimeUnit.MILLISECONDS);
+                   final Value valueFromResponse = Value.fromHttpResponse(response);
+                   values.add(valueFromResponse);
+                   asks++;
                } catch (InterruptedException | ExecutionException | TimeoutException e ){
                    logger.error("Can't wait response from node in url {} ", node.key(), e);
                }
             }
         }
-        if(asks.get() >= acks) {
+        if(asks >= acks) {
             final Value value = Value.merge(values);
-            final Response response = ResponseUtils.from(value, false);
-            ResponseUtils.sendResponse(session, response);
+            return ResponseUtils.from(value, false);
         } else {
-            ResponseUtils.sendResponse(session, new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY));
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
         }
     }
 

@@ -14,6 +14,7 @@ import one.nio.server.AcceptorConfig;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -174,13 +175,13 @@ public final class RestController extends HttpServer implements Service {
 
         switch (request.getMethod()) {
             case Request.METHOD_GET:
-                asyncExecute(() -> entityService.get(session, id, key, rf.ack, rf.from, finalProxied));
+                asyncExecute(session, () -> entityService.get(id, key, rf.ack, rf.from, finalProxied));
                 break;
             case Request.METHOD_DELETE:
-                asyncExecute(() -> entityService.delete(session, id, key, rf.ack, rf.from, finalProxied));
+                asyncExecute(session, () -> entityService.delete(id, key, rf.ack, rf.from, finalProxied));
                 break;
             case Request.METHOD_PUT:
-                asyncExecute(() -> entityService.upsert(session, id, key, request.getBody(), rf.ack, rf.from, finalProxied));
+                asyncExecute(session, () -> entityService.upsert(id, key, request.getBody(), rf.ack, rf.from, finalProxied));
                 break;
             default:
                 sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
@@ -188,6 +189,26 @@ public final class RestController extends HttpServer implements Service {
         }
     }
 
+    private interface ResponsePublisher {
+        Response submit() throws IOException;
+    }
+
+    private void asyncExecute(
+            @NotNull final HttpSession session,
+            @NotNull final ResponsePublisher publisher) {
+        asyncExecute(() -> {
+            try {
+                sendResponse(session, publisher.submit());
+            } catch (IOException e) {
+                logger.error("Unable to create response ", e.getCause());
+                try {
+                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                } catch (IOException ioException) {
+                    logger.error("Error while send response ", ioException.getCause());
+                }
+            }
+        });
+    }
     private static final class RF {
         private final int ack;
         private final int from;
