@@ -179,7 +179,7 @@ public final class EntityService {
                     () -> {
                         final Iterator<Cell> cellIterator = dao.latestIterator(key);
                         final Response response = ResponseUtils.from(
-                                Value.valueOf(cellIterator, key), proxy
+                                Value.valueOf(cellIterator, key), true
                         );
                         sendResponse(session, response);
                     }
