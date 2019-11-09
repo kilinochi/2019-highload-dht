@@ -28,6 +28,7 @@ public final class StorageSession extends HttpSession {
 
     /**
      * Custom session for write range of chunks ro socket.
+     *
      * @param socket is socket in witch will be write range of data
      * @param server is server in witch context data will be write data
      */
@@ -39,6 +40,7 @@ public final class StorageSession extends HttpSession {
 
     /**
      * Range streaming data as Iterator to socket.
+     *
      * @param records is iterator as data for stream.
      */
     public void stream(@NotNull final Iterator<Record> records) throws IOException {
@@ -56,20 +58,20 @@ public final class StorageSession extends HttpSession {
     }
 
     private void next() throws IOException {
-        if(data == null) {
+        if (data == null) {
             throw new IllegalStateException("");
         }
         while (data.hasNext() && queueHead == null) {
             final Record record = data.next();
             writeRecord(record);
         }
-        if(!data.hasNext()) {
+        if (!data.hasNext()) {
             write(EMPTY_CHUNK, 0, EMPTY_CHUNK.length);
 
             server.incRequestsProcessed();
 
-            if((handling = pipeline.pollFirst()) != null) {
-                if(handling == FIN) {
+            if ((handling = pipeline.pollFirst()) != null) {
+                if (handling == FIN) {
                     scheduleClose();
                 } else {
                     try {

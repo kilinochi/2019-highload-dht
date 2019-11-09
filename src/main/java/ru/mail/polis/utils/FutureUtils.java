@@ -21,7 +21,7 @@ public final class FutureUtils {
      * Collapse and compose collection of futures to future of collection.
      *
      * @param futures is futures
-     * @param ack is acks
+     * @param ack     is acks
      */
     @NotNull
     public static <T> CompletableFuture<Collection<T>> compose(

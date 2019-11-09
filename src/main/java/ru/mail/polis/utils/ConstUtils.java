@@ -6,5 +6,6 @@ public final class ConstUtils {
     public static final String PROXY_HEADER_VALUE = "True";
     public static final String PROXY_HEADER = PROXY_HEADER_NAME + ": " + PROXY_HEADER_VALUE;
 
-    private ConstUtils(){}
+    private ConstUtils() {
+    }
 }

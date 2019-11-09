@@ -79,7 +79,7 @@ public final class ConsistentHashTopology implements Topology<ServiceNode> {
     @NotNull
     @Override
     public List<ServiceNode> replicas(final int count,
-                                  @NotNull final ByteBuffer key) {
+                                      @NotNull final ByteBuffer key) {
         final SortedMap<Long, VirtualNode> tailMap = tailMap(key);
         final List<ServiceNode> nodesTailMap =
                 tailMap.values()

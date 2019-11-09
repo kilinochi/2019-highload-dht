@@ -11,7 +11,8 @@ final class CompletablePromiseContext {
 
     private static final ScheduledExecutorService SERVICE = Executors.newSingleThreadScheduledExecutor();
 
-    private CompletablePromiseContext(){}
+    private CompletablePromiseContext() {
+    }
 
     static void schedule(@NotNull final Runnable r) {
         SERVICE.schedule(r, 20, TimeUnit.MILLISECONDS);
