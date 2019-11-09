@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
@@ -167,8 +168,8 @@ public final class EntityService {
              final int from,
              final boolean proxy) {
         @NotNull final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        final Iterator<Cell> cellIterator = dao.latestIterator(key);
         if (proxy) {
+            final Iterator<Cell> cellIterator = dao.latestIterator(key);
             final Value value = Value.valueOf(cellIterator, key);
             return ResponseUtils.from(value, true);
         }
@@ -177,7 +178,10 @@ public final class EntityService {
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
                     if(topology.isMe(serviceNode)) {
-                        final Future<Value> futureValue = serviceWorkers.submit(() -> Value.valueOf(cellIterator, key));
+                        final Future<Value> futureValue = serviceWorkers.submit(() -> {
+                            final Iterator<Cell> cellIterator = dao.latestIterator(key);
+                            return Value.valueOf(cellIterator, key);
+                        });
                         final CompletableFuture<Value> future = new CompletablePromise<>(futureValue);
                         futures.add(future);
                     } else {

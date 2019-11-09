@@ -17,7 +17,7 @@ public final class FutureUtils {
     private FutureUtils(){}
 
     /**
-     * Collapse and compose collection of futures to future of collection
+     * Collapse and compose collection of futures to future of collection.
      * @param futures is futures
      * @param acks is acks
      */

@@ -27,29 +27,23 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
     }
 
     @Override
-    public CompletableFuture<Void> upsert(@NotNull final byte[] value, @NotNull final String id, @NotNull final String url) {
+    public CompletableFuture<Void> upsert(@NotNull final byte[] value,
+                                          @NotNull final String id,
+                                          @NotNull final String url) {
         final HttpRequest httpRequest = builder(id, url).PUT(ofBytes(value)).build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding())
-                .thenApply(HttpResponse::body)
-                .exceptionally(throwable -> {
-                    logger.error("Error while upsert async value = ", throwable);
-                    return null;
-                });
+        return sendAsyncRequest(httpRequest);
     }
 
     @Override
-    public CompletableFuture<Void> delete(@NotNull final String id, @NotNull final String url) {
+    public CompletableFuture<Void> delete(@NotNull final String id,
+                                          @NotNull final String url) {
         final HttpRequest httpRequest = builder(id, url).DELETE().build();
-        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding())
-                .thenApply(HttpResponse::body)
-                .exceptionally(throwable -> {
-                    logger.error("Error while delete async value = ", throwable);
-                    return null;
-                });
+        return sendAsyncRequest(httpRequest);
     }
 
     @Override
-    public CompletableFuture<Value> get(@NotNull final String id, @NotNull final String url) {
+    public CompletableFuture<Value> get(@NotNull final String id,
+                                        @NotNull final String url) {
         final HttpRequest httpRequest = builder(id, url).GET().build();
         return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofByteArray())
                 .thenApply(Value::fromHttpResponse)
@@ -59,7 +53,8 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
                 });
     }
 
-    private HttpRequest.Builder builder(@NotNull final String id, @NotNull final String url) {
+    private HttpRequest.Builder builder(@NotNull final String id,
+                                        @NotNull final String url) {
         return HttpRequest.newBuilder()
                 .uri(URI.create(url + ENTITY_PATH_ID + id))
                 .header(ConstUtils.PROXY_HEADER_NAME, ConstUtils.PROXY_HEADER_VALUE);
@@ -67,5 +62,14 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
 
     private HttpRequest.BodyPublisher ofBytes(@NotNull final byte[] body) {
         return HttpRequest.BodyPublishers.ofByteArray(body);
+    }
+
+    private CompletableFuture<Void> sendAsyncRequest(@NotNull final HttpRequest httpRequest) {
+        return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding())
+                .thenApply(HttpResponse::body)
+                .exceptionally(throwable -> {
+                    logger.error("Error while async value with request {} = ", httpRequest.method() ,throwable);
+                    return null;
+                });
     }
 }
