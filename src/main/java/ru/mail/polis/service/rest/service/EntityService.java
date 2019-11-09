@@ -182,7 +182,9 @@ public final class EntityService {
         final CompletableFuture<Response> futureResp =
                 FutureUtils.collapseFutures(futures, acks)
                         .handleAsync((values, throwable) -> {
+            logger.error("Error is : ", throwable);
             if (throwable == null && values != null) {
+                logger.info("values is {} : ", values);
                 return ResponseUtils.responseFromValues(values);
             }
             return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
