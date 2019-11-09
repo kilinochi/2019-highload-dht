@@ -1,8 +1,6 @@
 package ru.mail.polis.client;
 
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ru.mail.polis.dao.storage.cell.Value;
 import ru.mail.polis.utils.ConstUtils;
 
@@ -14,7 +12,6 @@ import java.util.concurrent.CompletableFuture;
 
 public final class AsyncHttpClientImpl implements AsyncHttpClient {
 
-    private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClientImpl.class);
     private static final String ENTITY_PATH_ID = "/v0/entity?id=";
 
     private final HttpClient client;
@@ -46,11 +43,7 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
                                         @NotNull final String url) {
         final HttpRequest httpRequest = builder(id, url).GET().build();
         return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofByteArray())
-                .thenApply(Value::fromHttpResponse)
-                .exceptionally(throwable -> {
-                    logger.error("Error while get async value = ", throwable);
-                    return null;
-                });
+                .thenApply(Value::fromHttpResponse);
     }
 
     private HttpRequest.Builder builder(@NotNull final String id,
@@ -66,10 +59,6 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
 
     private CompletableFuture<Void> sendAsyncRequest(@NotNull final HttpRequest httpRequest) {
         return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding())
-                .thenApply(HttpResponse::body)
-                .exceptionally(throwable -> {
-                    logger.error("Error while async value with request {} = ", httpRequest.method(), throwable);
-                    return null;
-                });
+                .thenApply(HttpResponse::body);
     }
 }
