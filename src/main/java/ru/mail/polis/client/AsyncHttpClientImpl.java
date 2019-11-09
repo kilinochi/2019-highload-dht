@@ -68,7 +68,7 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
         return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding())
                 .thenApply(HttpResponse::body)
                 .exceptionally(throwable -> {
-                    logger.error("Error while async value with request {} = ", httpRequest.method() ,throwable);
+                    logger.error("Error while async value with request {} = ", httpRequest.method(), throwable);
                     return null;
                 });
     }
