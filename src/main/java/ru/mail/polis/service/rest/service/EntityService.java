@@ -79,9 +79,15 @@ public final class EntityService {
                         futures.add(future);
                     }
                 });
-        CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks)
-                .handle((values, throwable) -> handleResponses(
-                        values, throwable, voids -> new Response(Response.ACCEPTED, Response.EMPTY)));
+        final CompletableFuture<Collection<Void>> compose = FutureUtils.compose(futures, acks);
+
+        final CompletableFuture<Response> futureResp = compose.handleAsync((values, throwable) -> {
+            if(throwable == null && values != null) {
+                return new Response(Response.ACCEPTED, Response.EMPTY);
+            }
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+        });
+
         return fromCompletableFuture(futureResp);
     }
 
@@ -115,9 +121,16 @@ public final class EntityService {
                         futures.add(future);
                     }
                 });
-        CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks)
-                .handle((values, throwable) -> handleResponses(
-                        values, throwable, voids -> new Response(Response.CREATED, Response.EMPTY)));
+
+        final CompletableFuture<Collection<Void>> compose = FutureUtils.compose(futures, acks);
+
+        final CompletableFuture<Response> futureResp = compose.handleAsync((values, throwable) -> {
+            if(throwable == null && values != null) {
+                return new Response(Response.CREATED, Response.EMPTY);
+            }
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+        });
+
         return fromCompletableFuture(futureResp);
     }
 
@@ -148,8 +161,13 @@ public final class EntityService {
                 });
 
         final CompletableFuture<Collection<Value>> compose = FutureUtils.compose(futures, acks);
-        final CompletableFuture<Response> futureResp = compose.handle((values, throwable) -> handleResponses(values, throwable,
-                        ResponseUtils::responseFromValues));
+
+        final CompletableFuture<Response> futureResp = compose.handleAsync((values, throwable) -> {
+                    if(throwable == null && values != null) {
+                        return ResponseUtils.responseFromValues(values);
+                    }
+                    return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+                });
 
         return fromCompletableFuture(futureResp);
     }
@@ -159,17 +177,6 @@ public final class EntityService {
     public Iterator<Record> range(@NotNull final ByteBuffer from,
                            @Nullable final ByteBuffer to) throws IOException {
         return dao.range(from, to);
-    }
-
-    @NotNull
-    private <T> Response handleResponses(
-            @Nullable final Collection<T> values,
-            @Nullable final Throwable throwable,
-            @NotNull final Function<Collection<T>, Response> response) {
-        if (values != null && throwable == null) {
-            return response.apply(values);
-        }
-        return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
     }
 
     private static Response fromCompletableFuture(@NotNull final CompletableFuture<Response> futureResponse) {
