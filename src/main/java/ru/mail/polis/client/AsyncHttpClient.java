@@ -3,7 +3,6 @@ package ru.mail.polis.client;
 import org.jetbrains.annotations.NotNull;
 import ru.mail.polis.dao.storage.cell.Value;
 
-import java.net.http.HttpResponse;
 import java.util.concurrent.CompletableFuture;
 
 public interface AsyncHttpClient {
