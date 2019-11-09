@@ -94,12 +94,7 @@ public final class EntityService {
                     }
                 });
 
-        final CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks).handleAsync((values, throwable) -> {
-            if (throwable == null && values != null) {
-                return new Response(Response.ACCEPTED, Response.EMPTY);
-            }
-            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
-        });
+        final CompletableFuture<Response> futureResp = responseFuture(futures, METHODS.DELETE, acks);
 
         return fromCompletableFuture(futureResp);
     }
@@ -144,12 +139,7 @@ public final class EntityService {
                     }
                 });
 
-        final CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks).handleAsync((values, throwable) -> {
-            if (throwable == null && values != null) {
-                return new Response(Response.CREATED, Response.EMPTY);
-            }
-            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
-        });
+        final CompletableFuture<Response> futureResp = responseFuture(futures, METHODS.PUT, acks);
 
         return fromCompletableFuture(futureResp);
     }
@@ -215,5 +205,27 @@ public final class EntityService {
             response = new Response(Response.INTERNAL_ERROR, Response.EMPTY);
         }
         return response;
+    }
+
+    private static <T> CompletableFuture<Response> responseFuture(@NotNull final Collection<CompletableFuture<T>> futures,
+                                                                  @NotNull final METHODS methods,
+                                                                  final int acks){
+        return FutureUtils.compose(futures, acks).handleAsync((values, throwable) -> {
+            if (throwable == null && values != null) {
+                switch (methods) {
+                    case PUT:
+                        return new Response(Response.CREATED, Response.EMPTY);
+                    case DELETE:
+                        return new Response(Response.ACCEPTED, Response.EMPTY);
+                    default:
+                        return new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY);
+                }
+            }
+            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+        });
+    }
+
+    private enum METHODS {
+        PUT, DELETE
     }
 }
