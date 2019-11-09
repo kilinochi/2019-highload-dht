@@ -209,7 +209,8 @@ public final class EntityService {
         return response;
     }
 
-    private static <T> CompletableFuture<Response> responseFuture(@NotNull final Collection<CompletableFuture<T>> futures,
+    private static <T> CompletableFuture<Response>
+            responseFuture(@NotNull final Collection<CompletableFuture<T>> futures,
                                                                   @NotNull final HttpMethods httpMethods,
                                                                   final int acks){
         return FutureUtils.collapseFutures(futures, acks).handleAsync((values, throwable) -> {
