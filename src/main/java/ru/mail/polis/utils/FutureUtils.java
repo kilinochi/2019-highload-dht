@@ -1,7 +1,6 @@
 package ru.mail.polis.utils;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,7 +9,6 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiConsumer;
 
 public final class FutureUtils {
 
@@ -23,7 +21,7 @@ public final class FutureUtils {
      * Collapse and compose collection of futures to future of collection.
      *
      * @param futures is futures
-     * @param ack       is acks
+     * @param ack is acks
      */
     @NotNull
     public static <T> CompletableFuture<Collection<T>> compose(
@@ -35,20 +33,20 @@ public final class FutureUtils {
         }
 
         final Collection<T> results = new ArrayList<>();
-        final Collection<Throwable> errors = new ArrayList<>();
+        final Collection<Throwable> throwables = new ArrayList<>();
         final Lock lock = new ReentrantLock();
 
         final CompletableFuture<Collection<T>> resultFuture = new CompletableFuture<>();
 
-        futures.forEach(future -> future.whenComplete((value, throwable) -> {
+        futures.forEach(future -> future.whenCompleteAsync((value, throwable) -> {
             if (resultFuture.isDone()) {
                 return;
             }
             lock.lock();
             try {
                 if (throwable != null) {
-                    errors.add(throwable);
-                    if (errors.size() > maxFail) {
+                    throwables.add(throwable);
+                    if (throwables.size() > maxFail) {
                         resultFuture.completeExceptionally(throwable);
                     }
                     return;
@@ -64,13 +62,10 @@ public final class FutureUtils {
                 lock.unlock();
             }
         }).thenApply(x -> null)
-                .exceptionally(FutureUtils::logError));
+                .exceptionally(throwable -> {
+                    logger.error("Something bad while merge futures :", throwable);
+                    return null;
+                }));
         return resultFuture;
-    }
-
-    @Nullable
-    private static Void logError(@NotNull final Throwable t) {
-        logger.error("Unexpected error", t);
-        return null;
     }
 }

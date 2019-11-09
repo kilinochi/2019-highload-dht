@@ -91,9 +91,8 @@ public final class EntityService {
                         futures.add(future);
                     }
                 });
-        final CompletableFuture<Collection<Void>> compose = FutureUtils.compose(futures, acks);
 
-        final CompletableFuture<Response> futureResp = compose.handleAsync((values, throwable) -> {
+        final CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks).handleAsync((values, throwable) -> {
             if(throwable == null && values != null) {
                 return new Response(Response.ACCEPTED, Response.EMPTY);
             }
@@ -142,9 +141,7 @@ public final class EntityService {
                     }
                 });
 
-        final CompletableFuture<Collection<Void>> compose = FutureUtils.compose(futures, acks);
-
-        final CompletableFuture<Response> futureResp = compose.handleAsync((values, throwable) -> {
+        final CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks).handleAsync((values, throwable) -> {
             if(throwable == null && values != null) {
                 return new Response(Response.CREATED, Response.EMPTY);
             }
@@ -190,9 +187,7 @@ public final class EntityService {
                     }
                 });
 
-        final CompletableFuture<Collection<Value>> compose = FutureUtils.compose(futures, acks);
-
-        final CompletableFuture<Response> futureResp = compose.handleAsync((values, throwable) -> {
+        final CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks).handleAsync((values, throwable) -> {
                     if(throwable == null && values != null) {
                         return ResponseUtils.responseFromValues(values);
                     }
