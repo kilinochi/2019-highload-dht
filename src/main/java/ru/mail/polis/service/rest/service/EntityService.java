@@ -78,14 +78,13 @@ public final class EntityService {
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
                     if (topology.isMe(serviceNode)) {
-                        final CompletableFuture<Void> future = CompletableFuture
-                                .runAsync(() -> {
-                                    try {
-                                        dao.remove(key);
-                                    } catch (IOException e) {
-                                        logger.error("Error while upsert local data : ", e);
-                                    }
-                                }, serviceWorkers);
+                        final CompletableFuture<Void> future = handleLocal(() -> {
+                            try {
+                                dao.remove(key);
+                            } catch (IOException e) {
+                                logger.error("Error while delete local data : ", e);
+                            }
+                        });
                         futures.add(future);
                     } else {
                         final CompletableFuture<Void> future =
@@ -123,14 +122,13 @@ public final class EntityService {
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
                     if (topology.isMe(serviceNode)) {
-                        final CompletableFuture<Void> future = CompletableFuture
-                                .runAsync(() -> {
-                                    try {
-                                        dao.upsert(key, value);
-                                    } catch (IOException e) {
-                                        logger.error("Error while upsert local data : ", e);
-                                    }
-                                }, serviceWorkers);
+                        final CompletableFuture<Void> future = handleLocal(() -> {
+                            try {
+                                dao.upsert(key, value);
+                            } catch (IOException e) {
+                                logger.error("Error while upsert local data : ", e);
+                            }
+                        });
                         futures.add(future);
                     } else {
                         final CompletableFuture<Void> future =
@@ -228,6 +226,10 @@ public final class EntityService {
         });
     }
 
+    private CompletableFuture<Void> handleLocal(@NotNull final Runnable task) {
+        return CompletableFuture.runAsync(task, serviceWorkers);
+    }
+    
     private enum HttpMethods {
         PUT, DELETE
     }
