@@ -1,6 +1,7 @@
 package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Splitter;
 import one.nio.http.HttpServer;
 import one.nio.http.HttpSession;
 import one.nio.http.HttpServerConfig;
@@ -17,10 +18,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.List;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.service.replica.RF;
 import ru.mail.polis.service.rest.service.EntityService;
 import ru.mail.polis.utils.BytesUtils;
 import ru.mail.polis.service.Service;
@@ -153,17 +154,10 @@ public final class RestController extends HttpServer implements Service {
             return;
         }
 
-
-        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        boolean proxied = false;
-        if (request.getHeader(ConstUtils.PROXY_HEADER) != null) {
-            proxied = true;
-        }
-        boolean finalProxied = proxied;
         final RF rf;
         try {
             rf = replicas == null ? defaultRF : RF.of(replicas);
-            if (rf.getAck() < 1 || rf.getFrom() < rf.getAck() || rf.getFrom() > nodesSize) {
+            if (rf.ack < 1 || rf.from < rf.ack || rf.from > nodesSize) {
                 throw new IllegalArgumentException("From is too big!");
             }
         } catch (IllegalArgumentException e) {
@@ -171,15 +165,24 @@ public final class RestController extends HttpServer implements Service {
             return;
         }
 
+        boolean proxied = false;
+        if (request.getHeader(ConstUtils.PROXY_HEADER) != null) {
+            proxied = true;
+        }
+        final boolean finalProxied = proxied;
+
         switch (request.getMethod()) {
             case Request.METHOD_GET:
-                asyncExecute(session, () -> entityService.get(id, key, rf.ack, rf.from, finalProxied));
+                asyncExecute(session, () ->
+                        entityService.get(id, rf.ack, rf.from, finalProxied));
                 break;
             case Request.METHOD_DELETE:
-                asyncExecute(session, () -> entityService.delete(id, key, rf.ack, rf.from, finalProxied));
+                asyncExecute(session, () ->
+                        entityService.delete(id, rf.ack, rf.from, finalProxied));
                 break;
             case Request.METHOD_PUT:
-                asyncExecute(session, () -> entityService.upsert(id, key, request.getBody(), rf.ack, rf.from, finalProxied));
+                asyncExecute(session, () ->
+                        entityService.upsert(id, request.getBody(), rf.ack, rf.from, finalProxied));
                 break;
             default:
                 sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
@@ -206,5 +209,24 @@ public final class RestController extends HttpServer implements Service {
                 }
             }
         });
+    }
+
+    private static final class RF {
+        private final int ack;
+        private final int from;
+
+        RF(final int ack, final int from) {
+            this.ack = ack;
+            this.from = from;
+        }
+
+        @NotNull
+        public static RF of(@NotNull final String value) {
+            final List<String> values = Splitter.on('/').splitToList(value);
+            if (values.size() != 2) {
+                throw new IllegalArgumentException("Wrong replica factor:" + value);
+            }
+            return new RF(Integer.parseInt(values.get(0)), Integer.parseInt(values.get(1)));
+        }
     }
 }

@@ -14,6 +14,7 @@ import ru.mail.polis.dao.storage.cell.Value;
 import ru.mail.polis.promise.CompletablePromise;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
+import ru.mail.polis.utils.BytesUtils;
 import ru.mail.polis.utils.FutureUtils;
 import ru.mail.polis.utils.ResponseUtils;
 
@@ -39,6 +40,11 @@ public final class EntityService {
     private final AsyncHttpClient client;
     private final ExecutorService serviceWorkers;
 
+    /**
+     * Service for interaction to dao.
+     * @param dao is storage
+     * @param topology is node topology
+     */
     public EntityService(@NotNull final DAO dao,
                          @NotNull final Topology<ServiceNode> topology) {
         this.dao = dao;
@@ -49,12 +55,19 @@ public final class EntityService {
                 new ThreadFactoryBuilder().setNameFormat("entity-service-workers-%d").build());
     }
 
+    /**
+     * Delete value from dao by id.
+     * @param id is id
+     * @param acks is information how many answers we can wait for create response
+     * @param from is information in how many nodes should be remove value by key
+     * @param proxy is proxy or not current node
+     */
     public Response delete(
                 @NotNull final String id,
-                @NotNull final ByteBuffer key,
                 final int acks,
                 final int from,
                 final boolean proxy) throws IOException {
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         if(proxy) {
             dao.remove(key);
             return new Response(Response.ACCEPTED, Response.EMPTY);
@@ -63,7 +76,7 @@ public final class EntityService {
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
                     if(topology.isMe(serviceNode)) {
-                        CompletableFuture<Void> future = CompletableFuture
+                        final CompletableFuture<Void> future = CompletableFuture
                                 .runAsync(() -> {
                                     try {
                                         dao.remove(key);
@@ -90,13 +103,21 @@ public final class EntityService {
         return fromCompletableFuture(futureResp);
     }
 
+    /**
+     * Upsert value in dao by id.
+     * @param id is id
+     * @param body in value to upsert
+     * @param acks is information how many answers we can wait for create response
+     * @param from is information in how many nodes should be upsert value by key
+     * @param proxy is proxy or not current node
+     */
     public Response upsert(@NotNull final String id,
-                @NotNull final ByteBuffer key,
                 @NotNull final byte[] body,
                 final int acks,
                 final int from,
                 final boolean proxy) throws IOException {
         final ByteBuffer value = ByteBuffer.wrap(body);
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         if(proxy) {
             dao.upsert(key, value);
             return new Response(Response.CREATED, Response.EMPTY);
@@ -105,7 +126,7 @@ public final class EntityService {
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
                     if(topology.isMe(serviceNode)) {
-                        CompletableFuture<Void> future = CompletableFuture
+                        final CompletableFuture<Void> future = CompletableFuture
                                 .runAsync(() -> {
                                     try {
                                         dao.upsert(key, value);
@@ -133,12 +154,19 @@ public final class EntityService {
         return fromCompletableFuture(futureResp);
     }
 
+    /**
+     * Get value in dao by id.
+     * @param id is id
+     * @param acks is information how many answers we can wait for create response
+     * @param from is information in how many nodes should be get value by key
+     * @param proxy is proxy or not current node
+     */
     public Response get(
              @NotNull final String id,
-             @NotNull final ByteBuffer key,
              final int acks,
              final int from,
              final boolean proxy) {
+        @NotNull final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         final Iterator<Cell> cellIterator = dao.latestIterator(key);
         if (proxy) {
             final Value value = Value.valueOf(cellIterator, key);
@@ -170,8 +198,6 @@ public final class EntityService {
 
         return fromCompletableFuture(futureResp);
     }
-
-
 
     public Iterator<Record> range(@NotNull final ByteBuffer from,
                            @Nullable final ByteBuffer to) throws IOException {

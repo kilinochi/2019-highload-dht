@@ -27,7 +27,7 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
     }
 
     @Override
-    public CompletableFuture<Void> upsert(@NotNull byte[] value, @NotNull String id, @NotNull final String url) {
+    public CompletableFuture<Void> upsert(@NotNull final byte[] value, @NotNull final String id, @NotNull final String url) {
         final HttpRequest httpRequest = builder(id, url).PUT(ofBytes(value)).build();
         return client.sendAsync(httpRequest, HttpResponse.BodyHandlers.discarding())
                 .thenApply(HttpResponse::body)

@@ -1,6 +1,5 @@
 package ru.mail.polis.utils;
 
-
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,13 +16,18 @@ public final class FutureUtils {
 
     private FutureUtils(){}
 
+    /**
+     * Collapse and compose collection of futures to future of collection
+     * @param futures is futures
+     * @param acks is acks
+     */
     @NotNull
     public static <T> CompletableFuture<Collection<T>> compose(
             @NotNull final Collection<CompletableFuture<T>> futures,
             final int acks) {
         if(futures.size() < acks) {
-            throw new IllegalArgumentException("Number of expected responses = " + futures.size() + " but acks is " +
-                    "= " + acks);
+            throw new IllegalArgumentException("Number of expected responses = "
+                    + futures.size() + " but acks is " + "= " + acks);
         }
 
         final int maxFails = futures.size() - acks;
