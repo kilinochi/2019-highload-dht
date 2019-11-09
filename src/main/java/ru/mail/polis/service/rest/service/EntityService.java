@@ -83,7 +83,7 @@ public final class EntityService {
                                     try {
                                         dao.remove(key);
                                     } catch (IOException e) {
-                                        logger.error("Error while upsert local data");
+                                        logger.error("Error while upsert local data : ", e);
                                     }
                                 }, serviceWorkers);
                         futures.add(future);
@@ -94,7 +94,7 @@ public final class EntityService {
                     }
                 });
 
-        final CompletableFuture<Response> futureResp = responseFuture(futures, METHODS.DELETE, acks);
+        final CompletableFuture<Response> futureResp = responseFuture(futures, HttpMethods.DELETE, acks);
 
         return fromCompletableFuture(futureResp);
     }
@@ -128,7 +128,7 @@ public final class EntityService {
                                     try {
                                         dao.upsert(key, value);
                                     } catch (IOException e) {
-                                        logger.error("Error while upsert local data");
+                                        logger.error("Error while upsert local data : ", e);
                                     }
                                 }, serviceWorkers);
                         futures.add(future);
@@ -139,7 +139,7 @@ public final class EntityService {
                     }
                 });
 
-        final CompletableFuture<Response> futureResp = responseFuture(futures, METHODS.PUT, acks);
+        final CompletableFuture<Response> futureResp = responseFuture(futures, HttpMethods.PUT, acks);
 
         return fromCompletableFuture(futureResp);
     }
@@ -181,7 +181,9 @@ public final class EntityService {
                     }
                 });
 
-        final CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks).handleAsync((values, throwable) -> {
+        final CompletableFuture<Response> futureResp =
+                FutureUtils.collapseFutures(futures, acks)
+                        .handleAsync((values, throwable) -> {
             if (throwable == null && values != null) {
                 return ResponseUtils.responseFromValues(values);
             }
@@ -208,11 +210,11 @@ public final class EntityService {
     }
 
     private static <T> CompletableFuture<Response> responseFuture(@NotNull final Collection<CompletableFuture<T>> futures,
-                                                                  @NotNull final METHODS methods,
+                                                                  @NotNull final HttpMethods httpMethods,
                                                                   final int acks){
-        return FutureUtils.compose(futures, acks).handleAsync((values, throwable) -> {
+        return FutureUtils.collapseFutures(futures, acks).handleAsync((values, throwable) -> {
             if (throwable == null && values != null) {
-                switch (methods) {
+                switch (httpMethods) {
                     case PUT:
                         return new Response(Response.CREATED, Response.EMPTY);
                     case DELETE:
@@ -225,7 +227,7 @@ public final class EntityService {
         });
     }
 
-    private enum METHODS {
+    private enum HttpMethods {
         PUT, DELETE
     }
 }

@@ -24,7 +24,7 @@ public final class FutureUtils {
      * @param ack     is acks
      */
     @NotNull
-    public static <T> CompletableFuture<Collection<T>> compose(
+    public static <T> CompletableFuture<Collection<T>> collapseFutures(
             @NotNull final Collection<CompletableFuture<T>> futures,
             final int ack) {
         final var maxFail = futures.size() - ack;
