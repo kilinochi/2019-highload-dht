@@ -1,7 +1,6 @@
 package ru.mail.polis.service.rest;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Splitter;
 import one.nio.http.HttpServer;
 import one.nio.http.HttpSession;
 import one.nio.http.HttpServerConfig;
@@ -17,11 +16,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Iterator;
 
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.service.replica.RF;
 import ru.mail.polis.service.rest.service.EntityService;
 import ru.mail.polis.utils.BytesUtils;
 import ru.mail.polis.service.Service;
@@ -164,7 +163,7 @@ public final class RestController extends HttpServer implements Service {
         final RF rf;
         try {
             rf = replicas == null ? defaultRF : RF.of(replicas);
-            if (rf.ack < 1 || rf.from < rf.ack || rf.from > nodesSize) {
+            if (rf.getAck() < 1 || rf.getFrom() < rf.getAck() || rf.getFrom() > nodesSize) {
                 throw new IllegalArgumentException("From is too big!");
             }
         } catch (IllegalArgumentException e) {
@@ -207,23 +206,5 @@ public final class RestController extends HttpServer implements Service {
                 }
             }
         });
-    }
-    private static final class RF {
-        private final int ack;
-        private final int from;
-
-        private RF(final int ack, final int from) {
-            this.ack = ack;
-            this.from = from;
-        }
-
-        @NotNull
-        private static RF of(@NotNull final String value) {
-            final List<String> values = Splitter.on('/').splitToList(value);
-            if (values.size() != 2) {
-                throw new IllegalArgumentException("Wrong replica factor:" + value);
-            }
-            return new RF(Integer.parseInt(values.get(0)), Integer.parseInt(values.get(1)));
-        }
     }
 }

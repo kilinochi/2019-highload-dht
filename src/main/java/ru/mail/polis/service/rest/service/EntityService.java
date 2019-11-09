@@ -29,7 +29,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
 
 public final class EntityService {
 
@@ -182,7 +181,7 @@ public final class EntityService {
     private static Response fromCompletableFuture(@NotNull final CompletableFuture<Response> futureResponse) {
         Response response;
         try {
-            response = futureResponse.get(200, TimeUnit.SECONDS);
+            response = futureResponse.get(1, TimeUnit.SECONDS);
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
             logger.error("Error while get response, ", e);
             response = new Response(Response.INTERNAL_ERROR, Response.EMPTY);
