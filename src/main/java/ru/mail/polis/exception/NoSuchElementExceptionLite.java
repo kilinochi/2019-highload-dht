@@ -1,4 +1,4 @@
-package ru.mail.polis.dao.storage.exception;
+package ru.mail.polis.exception;
 
 import org.jetbrains.annotations.NotNull;
 

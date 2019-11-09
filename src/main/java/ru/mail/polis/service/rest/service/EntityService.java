@@ -71,7 +71,7 @@ public final class EntityService {
                                     } catch (IOException e) {
                                         logger.error("Error while upsert local data");
                                     }
-                                });
+                                }, serviceWorkers);
                         futures.add(future);
                     } else {
                         final CompletableFuture<Void> future =
@@ -107,7 +107,7 @@ public final class EntityService {
                                     } catch (IOException e) {
                                         logger.error("Error while upsert local data");
                                     }
-                                });
+                                }, serviceWorkers);
                         futures.add(future);
                     } else {
                         final CompletableFuture<Void> future =
@@ -147,8 +147,8 @@ public final class EntityService {
                     }
                 });
 
-        CompletableFuture<Response> futureResp = FutureUtils.compose(futures, acks)
-                .handle((values, throwable) -> handleResponses(values, throwable,
+        final CompletableFuture<Collection<Value>> compose = FutureUtils.compose(futures, acks);
+        final CompletableFuture<Response> futureResp = compose.handle((values, throwable) -> handleResponses(values, throwable,
                         ResponseUtils::responseFromValues));
 
         return fromCompletableFuture(futureResp);

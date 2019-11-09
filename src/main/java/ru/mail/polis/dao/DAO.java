@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.mail.polis.Record;
 import ru.mail.polis.dao.storage.cell.Cell;
-import ru.mail.polis.dao.storage.exception.NoSuchElementExceptionLite;
+import ru.mail.polis.exception.NoSuchElementExceptionLite;
 
 import java.io.Closeable;
 import java.io.IOException;
