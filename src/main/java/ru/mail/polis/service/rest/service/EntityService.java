@@ -182,13 +182,13 @@ public final class EntityService {
         final CompletableFuture<Response> futureResp =
                 FutureUtils.collapseFutures(futures, acks)
                         .handleAsync((values, throwable) -> {
-            logger.error("Error is : ", throwable);
-            if (throwable == null && values != null) {
-                logger.info("values is {} : ", values);
-                return ResponseUtils.responseFromValues(values);
-            }
-            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
-        });
+                            logger.error("Error is : ", throwable);
+                            if (throwable == null && values != null) {
+                                logger.info("values is {} : ", values);
+                                return ResponseUtils.responseFromValues(values);
+                            }
+                            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+                        });
 
         return fromCompletableFuture(futureResp);
     }
@@ -209,29 +209,33 @@ public final class EntityService {
         return response;
     }
 
-    private static <T> CompletableFuture<Response>
-            responseFuture(@NotNull final Collection<CompletableFuture<T>> futures,
-                                                                  @NotNull final HttpMethods httpMethods,
-                                                                  final int acks){
-        return FutureUtils.collapseFutures(futures, acks).handleAsync((values, throwable) -> {
-            if (throwable == null && values != null) {
-                switch (httpMethods) {
-                    case PUT:
-                        return new Response(Response.CREATED, Response.EMPTY);
-                    case DELETE:
-                        return new Response(Response.ACCEPTED, Response.EMPTY);
-                    default:
-                        return new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY);
-                }
+    private static <T> CompletableFuture<Response> responseFuture(
+            @NotNull final Collection<CompletableFuture<T>> futures,
+            @NotNull final HttpMethods httpMethods,
+            final int acks) {
+        return FutureUtils.collapseFutures(futures, acks).handleAsync((values, throwable) -> createResponse(throwable, values, httpMethods));
+    }
+
+    private static <T> Response createResponse(@NotNull final Throwable throwable,
+                                               @NotNull final Collection<T> values,
+                                               @NotNull final HttpMethods method) {
+        if (throwable == null && values != null) {
+            switch (method) {
+                case PUT:
+                    return new Response(Response.CREATED, Response.EMPTY);
+                case DELETE:
+                    return new Response(Response.ACCEPTED, Response.EMPTY);
+                default:
+                    return new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY);
             }
-            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
-        });
+        }
+        return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
     }
 
     private CompletableFuture<Void> handleLocal(@NotNull final Runnable task) {
         return CompletableFuture.runAsync(task, serviceWorkers);
     }
-    
+
     private enum HttpMethods {
         PUT, DELETE
     }

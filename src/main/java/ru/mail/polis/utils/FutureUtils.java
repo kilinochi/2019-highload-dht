@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 
 public final class FutureUtils {
 
@@ -34,11 +35,25 @@ public final class FutureUtils {
 
         final Collection<T> results = new ArrayList<>();
         final Collection<Throwable> throwables = new ArrayList<>();
-        final Lock lock = new ReentrantLock();
 
         final CompletableFuture<Collection<T>> resultFuture = new CompletableFuture<>();
 
-        futures.forEach(future -> future.whenCompleteAsync((value, throwable) -> {
+        futures.forEach(future -> future.whenCompleteAsync(biConsumer(throwables, results, resultFuture, ack, maxFail))
+                .thenApply(x -> null)
+                .exceptionally(throwable -> {
+                    logger.error("Something bad while merge futures :", throwable);
+                    return null;
+                }));
+        return resultFuture;
+    }
+
+    private static <T> BiConsumer <T, Throwable> biConsumer(@NotNull final Collection<Throwable> throwables,
+                                                            @NotNull final Collection<T> results,
+                                                            @NotNull final CompletableFuture<Collection<T>> resultFuture,
+                                                            final int ack,
+                                                            final int maxFail) {
+        final Lock lock = new ReentrantLock();
+        return (value, throwable) -> {
             if (resultFuture.isDone()) {
                 return;
             }
@@ -61,11 +76,6 @@ public final class FutureUtils {
             } finally {
                 lock.unlock();
             }
-        }).thenApply(x -> null)
-                .exceptionally(throwable -> {
-                    logger.error("Something bad while merge futures :", throwable);
-                    return null;
-                }));
-        return resultFuture;
+        };
     }
 }
