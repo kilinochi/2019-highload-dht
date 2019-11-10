@@ -47,14 +47,14 @@ public final class FutureUtils {
         return resultFuture;
     }
 
-    private static <T> BiConsumer <T, Throwable> biConsumer(@NotNull final Collection<Throwable> throwables,
-                                                            @NotNull final Collection<T> results,
-                                                            @NotNull final CompletableFuture<Collection<T>> resultFuture,
-                                                            final int ack,
-                                                            final int maxFail) {
+    private static <T> BiConsumer<T, Throwable> biConsumer(@NotNull final Collection<Throwable> throwables,
+                                                           @NotNull final Collection<T> results,
+                                                           @NotNull final CompletableFuture<Collection<T>> res,
+                                                           final int ack,
+                                                           final int maxFail) {
         final Lock lock = new ReentrantLock();
         return (value, throwable) -> {
-            if (resultFuture.isDone()) {
+            if (res.isDone()) {
                 return;
             }
             lock.lock();
@@ -62,7 +62,7 @@ public final class FutureUtils {
                 if (throwable != null) {
                     throwables.add(throwable);
                     if (throwables.size() > maxFail) {
-                        resultFuture.completeExceptionally(throwable);
+                        res.completeExceptionally(throwable);
                     }
                     return;
                 }
@@ -71,7 +71,7 @@ public final class FutureUtils {
                 }
                 results.add(value);
                 if (results.size() == ack) {
-                    resultFuture.complete(results);
+                    res.complete(results);
                 }
             } finally {
                 lock.unlock();

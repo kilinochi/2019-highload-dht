@@ -30,8 +30,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 public final class EntityService {
 
@@ -215,7 +213,8 @@ public final class EntityService {
             @NotNull final Collection<CompletableFuture<T>> futures,
             @NotNull final HttpMethods httpMethods,
             final int acks) {
-        return FutureUtils.collapseFutures(futures, acks).handleAsync((values, throwable) -> createResponse(throwable, values, httpMethods));
+        return FutureUtils.collapseFutures(futures, acks)
+                .handleAsync((values, throwable) -> createResponse(throwable, values, httpMethods));
     }
 
     private static <T> Response createResponse(@Nullable final Throwable throwable,
