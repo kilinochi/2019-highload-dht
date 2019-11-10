@@ -30,6 +30,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 public final class EntityService {
 
@@ -216,8 +218,8 @@ public final class EntityService {
         return FutureUtils.collapseFutures(futures, acks).handleAsync((values, throwable) -> createResponse(throwable, values, httpMethods));
     }
 
-    private static <T> Response createResponse(@NotNull final Throwable throwable,
-                                               @NotNull final Collection<T> values,
+    private static <T> Response createResponse(@Nullable final Throwable throwable,
+                                               @Nullable final Collection<T> values,
                                                @NotNull final HttpMethods method) {
         if (throwable == null && values != null) {
             switch (method) {

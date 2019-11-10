@@ -19,7 +19,7 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
     AsyncHttpClientImpl() {
         client = HttpClient
                 .newBuilder()
-                .version(HttpClient.Version.HTTP_2)
+                .version(HttpClient.Version.HTTP_1_1)
                 .build();
     }
 
@@ -50,7 +50,8 @@ public final class AsyncHttpClientImpl implements AsyncHttpClient {
                                         @NotNull final String url) {
         return HttpRequest.newBuilder()
                 .uri(URI.create(url + ENTITY_PATH_ID + id))
-                .header(ConstUtils.PROXY_HEADER_NAME, ConstUtils.PROXY_HEADER_VALUE);
+                .header(ConstUtils.PROXY_HEADER_NAME, ConstUtils.PROXY_HEADER_VALUE)
+                .version(HttpClient.Version.HTTP_1_1);
     }
 
     private HttpRequest.BodyPublisher ofBytes(@NotNull final byte[] body) {
