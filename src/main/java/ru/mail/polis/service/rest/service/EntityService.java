@@ -26,7 +26,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Function;
 
 import static ru.mail.polis.utils.ResponseUtils.sendResponse;
 
@@ -68,8 +67,6 @@ public final class EntityService {
             @NotNull final HttpSession session,
             final boolean proxy) {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        final int from = rf.getFrom();
-        final int acks = rf.getAck();
         if (proxy) {
             handleLocal(() -> {
                 deleteLocalValue(key);
@@ -80,6 +77,8 @@ public final class EntityService {
             });
             return;
         }
+        final int from = rf.getFrom();
+        final int acks = rf.getAck();
         final Collection<CompletableFuture<Void>> futures = new ConcurrentLinkedQueue<>();
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
@@ -95,7 +94,7 @@ public final class EntityService {
         responseFuture(futures, HttpMethods.DELETE, acks)
                 .whenCompleteAsync((response, throwable) -> sendResponse(session, response))
                 .exceptionally(throwable -> {
-                    sendResponse(session, new Response(Response.INTERNAL_ERROR, Response.EMPTY));
+                    exceptionallyHandle(session, throwable);
                     return null;
                 });
     }
@@ -115,27 +114,18 @@ public final class EntityService {
                        final boolean proxy) {
         final ByteBuffer value = ByteBuffer.wrap(body);
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        final int from = rf.getFrom();
-        final int acks = rf.getAck();
         if (proxy) {
             handleLocal(() -> {
-                try {
-                    dao.upsert(key, value);
-                    sendResponse(session, new Response(Response.CREATED, Response.EMPTY));
-                } catch (IOException e) {
-                    logger.error("Unable to create response ", e.getCause());
-                    try {
-                        session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                    } catch (IOException ioException) {
-                        logger.error("Error while send response ", ioException.getCause());
-                    }
-                }
+                upsertLocalValue(key, value);
+                sendResponse(session, new Response(Response.CREATED, Response.EMPTY));
             }).exceptionally(throwable -> {
                 exceptionallyHandle(session, throwable);
                 return null;
             });
             return;
         }
+        final int from = rf.getFrom();
+        final int acks = rf.getAck();
         final Collection<CompletableFuture<Void>> futures = new ConcurrentLinkedQueue<>();
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
@@ -152,7 +142,7 @@ public final class EntityService {
         responseFuture(futures, HttpMethods.PUT, acks)
                 .whenCompleteAsync((response, throwable) -> sendResponse(session, response))
                 .exceptionally(throwable -> {
-                    sendResponse(session, new Response(Response.INTERNAL_ERROR, Response.EMPTY));
+                    exceptionallyHandle(session, throwable);
                     return null;
                 });
     }
@@ -170,8 +160,6 @@ public final class EntityService {
             @NotNull final HttpSession session,
             final boolean proxy) {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
-        final int from = rf.getFrom();
-        final int acks = rf.getAck();
         if (proxy) {
             handleLocal(() -> {
                 final Value value = getLocalValue(key);
@@ -183,7 +171,8 @@ public final class EntityService {
             });
             return;
         }
-
+        final int from = rf.getFrom();
+        final int acks = rf.getAck();
         final Collection<CompletableFuture<Value>> futures = new ConcurrentLinkedQueue<>();
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
@@ -198,15 +187,13 @@ public final class EntityService {
 
         FutureUtils.collapseFutures(futures, acks)
                 .handleAsync((values, throwable) -> {
-                    logger.error("Error is : ", throwable);
                     if (throwable == null && values != null) {
-                        logger.info("values is {} : ", values);
                         return ResponseUtils.responseFromValues(values);
                     }
                     return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
                 }).whenCompleteAsync((response, throwable) -> sendResponse(session, response))
                 .exceptionally(throwable -> {
-                    sendResponse(session, new Response(Response.INTERNAL_ERROR, Response.EMPTY));
+                    exceptionallyHandle(session, throwable);
                     return null;
                 });
     }
@@ -275,7 +262,7 @@ public final class EntityService {
         try {
             session.sendError(Response.INTERNAL_ERROR, "Error while send response");
         } catch (IOException ioException) {
-            logger.error("Error while send response ", ioException.getCause());
+            logger.error("Error while send error ", ioException.getCause());
         }
     }
 
