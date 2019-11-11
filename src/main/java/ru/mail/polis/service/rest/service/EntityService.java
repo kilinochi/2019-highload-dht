@@ -50,7 +50,7 @@ public final class EntityService {
         this.topology = topology;
         this.client = AsyncHttpClient.create();
         serviceWorkers = Executors.newFixedThreadPool(
-                Runtime.getRuntime().availableProcessors() + 1,
+                Runtime.getRuntime().availableProcessors() + 2,
                 new ThreadFactoryBuilder().setNameFormat("entity-service-workers-%d").build());
     }
 
