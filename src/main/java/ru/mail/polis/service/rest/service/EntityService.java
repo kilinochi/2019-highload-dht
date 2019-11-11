@@ -9,9 +9,7 @@ import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.client.AsyncHttpClient;
 import ru.mail.polis.dao.DAO;
-import ru.mail.polis.dao.storage.cell.Cell;
 import ru.mail.polis.dao.storage.cell.Value;
-import ru.mail.polis.promise.CompletablePromise;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
 import ru.mail.polis.utils.BytesUtils;
@@ -27,7 +25,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -77,20 +74,13 @@ public final class EntityService {
         final Collection<CompletableFuture<Void>> futures = new ConcurrentLinkedQueue<>();
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
+                    final CompletableFuture<Void> future;
                     if (topology.isMe(serviceNode)) {
-                        final CompletableFuture<Void> future = handleLocal(() -> {
-                            try {
-                                dao.remove(key);
-                            } catch (IOException e) {
-                                logger.error("Error while delete local data : ", e);
-                            }
-                        });
-                        futures.add(future);
+                        future = handleLocal(() -> deleteLocalValue(key));
                     } else {
-                        final CompletableFuture<Void> future =
-                                client.delete(id, serviceNode.key());
-                        futures.add(future);
+                        future = client.delete(id, serviceNode.key());
                     }
+                    futures.add(future);
                 });
 
         final CompletableFuture<Response> futureResp = responseFuture(futures, HttpMethods.DELETE, acks);
@@ -121,20 +111,14 @@ public final class EntityService {
         final Collection<CompletableFuture<Void>> futures = new ConcurrentLinkedQueue<>();
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
+                    final CompletableFuture<Void> future;
                     if (topology.isMe(serviceNode)) {
-                        final CompletableFuture<Void> future = handleLocal(() -> {
-                            try {
-                                dao.upsert(key, value);
-                            } catch (IOException e) {
-                                logger.error("Error while upsert local data : ", e);
-                            }
-                        });
-                        futures.add(future);
+                        future = handleLocal(() -> upsertLocalValue(key, value));
                     } else {
-                        final CompletableFuture<Void> future =
-                                client.upsert(body, id, serviceNode.key());
-                        futures.add(future);
+                        future = client.upsert(body, id, serviceNode.key());
+
                     }
+                    futures.add(future);
                 });
 
         final CompletableFuture<Response> futureResp = responseFuture(futures, HttpMethods.PUT, acks);
@@ -157,26 +141,20 @@ public final class EntityService {
             final boolean proxy) {
         @NotNull final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         if (proxy) {
-            final Iterator<Cell> cellIterator = dao.latestIterator(key);
-            final Value value = Value.valueOf(cellIterator, key);
+            final Value value = getLocalValue(key);
             return ResponseUtils.from(value, true);
         }
 
         final Collection<CompletableFuture<Value>> futures = new ConcurrentLinkedQueue<>();
         topology.replicas(from, key)
                 .forEach(serviceNode -> {
+                    final CompletableFuture<Value> future;
                     if (topology.isMe(serviceNode)) {
-                        final Future<Value> futureValue = serviceWorkers.submit(() -> {
-                            final Iterator<Cell> cellIterator = dao.latestIterator(key);
-                            return Value.valueOf(cellIterator, key);
-                        });
-                        final CompletableFuture<Value> future = new CompletablePromise<>(futureValue);
-                        futures.add(future);
+                        future = getLocal(key);
                     } else {
-                        final CompletableFuture<Value> future =
-                                client.get(id, serviceNode.key());
-                        futures.add(future);
+                        future = client.get(id, serviceNode.key());
                     }
+                    futures.add(future);
                 });
 
         final CompletableFuture<Response> futureResp =
@@ -235,6 +213,30 @@ public final class EntityService {
 
     private CompletableFuture<Void> handleLocal(@NotNull final Runnable task) {
         return CompletableFuture.runAsync(task, serviceWorkers);
+    }
+
+    private CompletableFuture<Value> getLocal(@NotNull final ByteBuffer key) {
+        return CompletableFuture.supplyAsync(() -> getLocalValue(key), serviceWorkers);
+    }
+
+    private Value getLocalValue(@NotNull final ByteBuffer key) {
+        return Value.fromIterator(key, dao.latestIterator(key));
+    }
+
+    private void upsertLocalValue(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value){
+        try {
+            dao.upsert(key, value);
+        } catch (IOException e) {
+            logger.error("Error while upsert local data : ", e);
+        }
+    }
+
+    private void deleteLocalValue(@NotNull final ByteBuffer key) {
+        try {
+            dao.remove(key);
+        } catch (IOException e) {
+            logger.error("Error while delete local data : ", e);
+        }
     }
 
     private enum HttpMethods {

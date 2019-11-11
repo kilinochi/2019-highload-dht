@@ -125,6 +125,16 @@ public final class Value implements Comparable<Value> {
     }
 
     /**
+     * Get iterator of Cells by key and merge Values.
+     * @param key is key by we get data and merge
+     * @param cellIterator is iterator of cells from me get values.
+     */
+    @NotNull
+    public static Value fromIterator(@NotNull final ByteBuffer key, @NotNull final Iterator<Cell> cellIterator) {
+        return Value.valueOf(cellIterator, key);
+    }
+
+    /**
      * Get value from Cell iterator .
      *
      * @param cells is iterator of cells
