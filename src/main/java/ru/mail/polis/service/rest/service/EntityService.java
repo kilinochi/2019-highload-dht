@@ -26,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static ru.mail.polis.utils.ResponseUtils.sendResponse;
 
@@ -71,24 +72,10 @@ public final class EntityService {
         final int acks = rf.getAck();
         if (proxy) {
             handleLocal(() -> {
-                try {
-                    dao.remove(key);
-                    sendResponse(session, new Response(Response.ACCEPTED, Response.EMPTY));
-                } catch (IOException e) {
-                    logger.error("Unable to create response ", e.getCause());
-                    try {
-                        session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                    } catch (IOException ioException) {
-                        logger.error("Error while send response ", ioException.getCause());
-                    }
-                }
+                deleteLocalValue(key);
+                sendResponse(session, new Response(Response.ACCEPTED, Response.EMPTY));
             }).exceptionally(throwable -> {
-                logger.error("Failed to delete local value,", throwable);
-                try {
-                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ioException) {
-                    logger.error("Error while send response ", ioException.getCause());
-                }
+                exceptionallyHandle(session, throwable);
                 return null;
             });
             return;
@@ -144,12 +131,7 @@ public final class EntityService {
                     }
                 }
             }).exceptionally(throwable -> {
-                logger.error("Failed to upsert local value,", throwable);
-                try {
-                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ioException) {
-                    logger.error("Error while send response ", ioException.getCause());
-                }
+                exceptionallyHandle(session, throwable);
                 return null;
             });
             return;
@@ -196,12 +178,7 @@ public final class EntityService {
                 final Response response = ResponseUtils.from(value, true);
                 sendResponse(session, response);
             }).exceptionally(throwable -> {
-                logger.error("Failed to upsert local value,", throwable);
-                try {
-                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ioException) {
-                    logger.error("Error while send response ", ioException.getCause());
-                }
+                exceptionallyHandle(session, throwable);
                 return null;
             });
             return;
@@ -289,6 +266,16 @@ public final class EntityService {
             dao.remove(key);
         } catch (IOException e) {
             logger.error("Error while delete local data : ", e);
+        }
+    }
+
+    private static void exceptionallyHandle(@NotNull final HttpSession session,
+                                            @NotNull final Throwable throwable) {
+        logger.error("Failed CRUD operation in local storage", throwable);
+        try {
+            session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+        } catch (IOException ioException) {
+            logger.error("Error while send response ", ioException.getCause());
         }
     }
 
