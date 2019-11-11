@@ -1,6 +1,7 @@
 package ru.mail.polis.service.rest.service;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import one.nio.http.HttpSession;
 import one.nio.http.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -9,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import ru.mail.polis.Record;
 import ru.mail.polis.client.AsyncHttpClient;
 import ru.mail.polis.dao.DAO;
+import ru.mail.polis.dao.replica.RF;
 import ru.mail.polis.dao.storage.cell.Value;
 import ru.mail.polis.service.topology.Topology;
 import ru.mail.polis.service.topology.node.ServiceNode;
@@ -57,16 +59,17 @@ public final class EntityService {
      * Delete value from dao by id.
      *
      * @param id    is id
-     * @param acks  is information how many answers we can wait for create response
-     * @param from  is information in how many nodes should be remove value by key
+     * @param rf    is replica factor
      * @param proxy is proxy or not current node
      */
-    public Response delete(
+    public void delete(
             @NotNull final String id,
-            final int acks,
-            final int from,
+            @NotNull final RF rf,
+            @NotNull final HttpSession session,
             final boolean proxy) throws IOException {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        final int from = rf.getFrom();
+        final int acks = rf.getAck();
         if (proxy) {
             dao.remove(key);
             return new Response(Response.ACCEPTED, Response.EMPTY);
@@ -93,17 +96,18 @@ public final class EntityService {
      *
      * @param id    is id
      * @param body  in value to upsert
-     * @param acks  is information how many answers we can wait for create response
-     * @param from  is information in how many nodes should be upsert value by key
+     * @param rf    is replica factor
      * @param proxy is proxy or not current node
      */
-    public Response upsert(@NotNull final String id,
-                           @NotNull final byte[] body,
-                           final int acks,
-                           final int from,
-                           final boolean proxy) throws IOException {
+    public void upsert(@NotNull final String id,
+                       @NotNull final RF rf,
+                       @NotNull final HttpSession session,
+                       @NotNull final byte[] body,
+                       final boolean proxy) throws IOException {
         final ByteBuffer value = ByteBuffer.wrap(body);
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        final int from = rf.getFrom();
+        final int acks = rf.getAck();
         if (proxy) {
             dao.upsert(key, value);
             return new Response(Response.CREATED, Response.EMPTY);
@@ -130,16 +134,17 @@ public final class EntityService {
      * Get value in dao by id.
      *
      * @param id    is id
-     * @param acks  is information how many answers we can wait for create response
-     * @param from  is information in how many nodes should be get value by key
+     * @param rf    is replica factor
      * @param proxy is proxy or not current node
      */
-    public Response get(
+    public void get(
             @NotNull final String id,
-            final int acks,
-            final int from,
+            @NotNull final RF rf,
+            @NotNull final HttpSession session,
             final boolean proxy) {
-        @NotNull final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        final ByteBuffer key = BytesUtils.keyByteBuffer(id);
+        final int from = rf.getFrom();
+        final int acks = rf.getAck();
         if (proxy) {
             final Value value = getLocalValue(key);
             return ResponseUtils.from(value, true);
@@ -223,7 +228,7 @@ public final class EntityService {
         return Value.fromIterator(key, dao.latestIterator(key));
     }
 
-    private void upsertLocalValue(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value){
+    private void upsertLocalValue(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
         try {
             dao.upsert(key, value);
         } catch (IOException e) {
