@@ -24,11 +24,10 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+
+import static ru.mail.polis.utils.ResponseUtils.sendResponse;
 
 public final class EntityService {
 
@@ -66,13 +65,33 @@ public final class EntityService {
             @NotNull final String id,
             @NotNull final RF rf,
             @NotNull final HttpSession session,
-            final boolean proxy) throws IOException {
+            final boolean proxy) {
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         final int from = rf.getFrom();
         final int acks = rf.getAck();
         if (proxy) {
-            dao.remove(key);
-            return new Response(Response.ACCEPTED, Response.EMPTY);
+            handleLocal(() -> {
+                try {
+                    dao.remove(key);
+                    sendResponse(session, new Response(Response.ACCEPTED, Response.EMPTY));
+                } catch (IOException e) {
+                    logger.error("Unable to create response ", e.getCause());
+                    try {
+                        session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                    } catch (IOException ioException) {
+                        logger.error("Error while send response ", ioException.getCause());
+                    }
+                }
+            }).exceptionally(throwable -> {
+                logger.error("Failed to delete local value,", throwable);
+                try {
+                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                } catch (IOException ioException) {
+                    logger.error("Error while send response ", ioException.getCause());
+                }
+                return null;
+            });
+            return;
         }
         final Collection<CompletableFuture<Void>> futures = new ConcurrentLinkedQueue<>();
         topology.replicas(from, key)
@@ -86,9 +105,12 @@ public final class EntityService {
                     futures.add(future);
                 });
 
-        final CompletableFuture<Response> futureResp = responseFuture(futures, HttpMethods.DELETE, acks);
-
-        return fromCompletableFuture(futureResp);
+        responseFuture(futures, HttpMethods.DELETE, acks)
+                .whenCompleteAsync((response, throwable) -> sendResponse(session, response))
+                .exceptionally(throwable -> {
+                    sendResponse(session, new Response(Response.INTERNAL_ERROR, Response.EMPTY));
+                    return null;
+                });
     }
 
     /**
@@ -103,14 +125,34 @@ public final class EntityService {
                        @NotNull final RF rf,
                        @NotNull final HttpSession session,
                        @NotNull final byte[] body,
-                       final boolean proxy) throws IOException {
+                       final boolean proxy) {
         final ByteBuffer value = ByteBuffer.wrap(body);
         final ByteBuffer key = BytesUtils.keyByteBuffer(id);
         final int from = rf.getFrom();
         final int acks = rf.getAck();
         if (proxy) {
-            dao.upsert(key, value);
-            return new Response(Response.CREATED, Response.EMPTY);
+            handleLocal(() -> {
+                try {
+                    dao.upsert(key, value);
+                    sendResponse(session, new Response(Response.CREATED, Response.EMPTY));
+                } catch (IOException e) {
+                    logger.error("Unable to create response ", e.getCause());
+                    try {
+                        session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                    } catch (IOException ioException) {
+                        logger.error("Error while send response ", ioException.getCause());
+                    }
+                }
+            }).exceptionally(throwable -> {
+                logger.error("Failed to upsert local value,", throwable);
+                try {
+                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                } catch (IOException ioException) {
+                    logger.error("Error while send response ", ioException.getCause());
+                }
+                return null;
+            });
+            return;
         }
         final Collection<CompletableFuture<Void>> futures = new ConcurrentLinkedQueue<>();
         topology.replicas(from, key)
@@ -125,9 +167,12 @@ public final class EntityService {
                     futures.add(future);
                 });
 
-        final CompletableFuture<Response> futureResp = responseFuture(futures, HttpMethods.PUT, acks);
-
-        return fromCompletableFuture(futureResp);
+        responseFuture(futures, HttpMethods.PUT, acks)
+                .whenCompleteAsync((response, throwable) -> sendResponse(session, response))
+                .exceptionally(throwable -> {
+                    sendResponse(session, new Response(Response.INTERNAL_ERROR, Response.EMPTY));
+                    return null;
+                });
     }
 
     /**
@@ -146,8 +191,20 @@ public final class EntityService {
         final int from = rf.getFrom();
         final int acks = rf.getAck();
         if (proxy) {
-            final Value value = getLocalValue(key);
-            return ResponseUtils.from(value, true);
+            handleLocal(() -> {
+                final Value value = getLocalValue(key);
+                final Response response = ResponseUtils.from(value, true);
+                sendResponse(session, response);
+            }).exceptionally(throwable -> {
+                logger.error("Failed to upsert local value,", throwable);
+                try {
+                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
+                } catch (IOException ioException) {
+                    logger.error("Error while send response ", ioException.getCause());
+                }
+                return null;
+            });
+            return;
         }
 
         final Collection<CompletableFuture<Value>> futures = new ConcurrentLinkedQueue<>();
@@ -162,34 +219,24 @@ public final class EntityService {
                     futures.add(future);
                 });
 
-        final CompletableFuture<Response> futureResp =
-                FutureUtils.collapseFutures(futures, acks)
-                        .handleAsync((values, throwable) -> {
-                            logger.error("Error is : ", throwable);
-                            if (throwable == null && values != null) {
-                                logger.info("values is {} : ", values);
-                                return ResponseUtils.responseFromValues(values);
-                            }
-                            return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
-                        });
-
-        return fromCompletableFuture(futureResp);
+        FutureUtils.collapseFutures(futures, acks)
+                .handleAsync((values, throwable) -> {
+                    logger.error("Error is : ", throwable);
+                    if (throwable == null && values != null) {
+                        logger.info("values is {} : ", values);
+                        return ResponseUtils.responseFromValues(values);
+                    }
+                    return new Response(Response.GATEWAY_TIMEOUT, Response.EMPTY);
+                }).whenCompleteAsync((response, throwable) -> sendResponse(session, response))
+                .exceptionally(throwable -> {
+                    sendResponse(session, new Response(Response.INTERNAL_ERROR, Response.EMPTY));
+                    return null;
+                });
     }
 
     public Iterator<Record> range(@NotNull final ByteBuffer from,
                                   @Nullable final ByteBuffer to) throws IOException {
         return dao.range(from, to);
-    }
-
-    private static Response fromCompletableFuture(@NotNull final CompletableFuture<Response> futureResponse) {
-        Response response;
-        try {
-            response = futureResponse.get(1, TimeUnit.SECONDS);
-        } catch (InterruptedException | TimeoutException | ExecutionException e) {
-            logger.error("Error while get response, ", e);
-            response = new Response(Response.INTERNAL_ERROR, Response.EMPTY);
-        }
-        return response;
     }
 
     private static <T> CompletableFuture<Response> responseFuture(
@@ -228,7 +275,8 @@ public final class EntityService {
         return Value.fromIterator(key, dao.latestIterator(key));
     }
 
-    private void upsertLocalValue(@NotNull final ByteBuffer key, @NotNull final ByteBuffer value) {
+    private void upsertLocalValue(@NotNull final ByteBuffer key,
+                                  @NotNull final ByteBuffer value) {
         try {
             dao.upsert(key, value);
         } catch (IOException e) {

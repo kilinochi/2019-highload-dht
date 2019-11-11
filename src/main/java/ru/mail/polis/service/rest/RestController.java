@@ -171,41 +171,17 @@ public final class RestController extends HttpServer implements Service {
 
         switch (request.getMethod()) {
             case Request.METHOD_GET:
-                asyncExecute(session, () ->
-                        entityService.get(id, rf, session, finalProxied));
+                        entityService.get(id, rf, session, finalProxied);
                 break;
             case Request.METHOD_DELETE:
-                asyncExecute(session, () ->
-                        entityService.delete(id, rf, session, finalProxied));
+                        entityService.delete(id, rf, session, finalProxied);
                 break;
             case Request.METHOD_PUT:
-                asyncExecute(session, () ->
-                        entityService.upsert(id, rf, session, request.getBody(), finalProxied));
+                        entityService.upsert(id, rf, session, request.getBody(), finalProxied);
                 break;
             default:
                 sendResponse(session, new Response(Response.METHOD_NOT_ALLOWED, Response.EMPTY));
                 break;
         }
-    }
-
-    private interface ResponsePublisher {
-        Response submit() throws IOException;
-    }
-
-    private void asyncExecute(
-            @NotNull final HttpSession session,
-            @NotNull final ResponsePublisher publisher) {
-        asyncExecute(() -> {
-            try {
-                sendResponse(session, publisher.submit());
-            } catch (IOException e) {
-                logger.error("Unable to create response ", e.getCause());
-                try {
-                    session.sendError(Response.INTERNAL_ERROR, "Error while send response");
-                } catch (IOException ioException) {
-                    logger.error("Error while send response ", ioException.getCause());
-                }
-            }
-        });
     }
 }
